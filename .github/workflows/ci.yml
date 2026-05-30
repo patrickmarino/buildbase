@@ -41,7 +41,7 @@ jobs:
       # Local Postgres has no TLS; #[sqlx::test] creates isolated DBs per test.
       DATABASE_URL: postgres://core:core@localhost:5432/core?sslmode=disable
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Use the runner's preinstalled rustup; rust-toolchain.toml pins 1.96 (for
       # sqlx 0.9) and its components, so no third-party toolchain action is needed.
@@ -72,7 +72,7 @@ jobs:
     name: Frontend (React)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # pnpm version comes from the `packageManager` field in package.json.
       - uses: pnpm/action-setup@v4
@@ -123,7 +123,7 @@ jobs:
       E2E_EMAIL: elena@madespace.co
       E2E_PASSWORD: changeme-dev-only
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         working-directory: apps/api
