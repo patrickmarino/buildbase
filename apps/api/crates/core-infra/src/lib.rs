@@ -13,10 +13,12 @@ pub mod error;
 pub mod rand_token;
 pub mod repos;
 pub mod seed;
+pub mod smtp_mailer;
 pub mod sys_clock;
 
 pub use argon2_hasher::Argon2Hasher;
 pub use db::{connect, migrate};
 pub use rand_token::RandTokenGenerator;
 pub use repos::*;
+pub use smtp_mailer::{NoopMailer, SmtpMailer};
 pub use sys_clock::SystemClock;

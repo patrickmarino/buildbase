@@ -9,12 +9,12 @@ use core_app::{
 };
 use core_domain::ids::OrgId;
 use core_domain::ports::{
-    ApiKeyRepo, AuditRepo, Clock, OrgRepo, PasswordHasher, PermissionRepo, RoleRepo, SessionRepo,
-    TokenGenerator, UserRepo,
+    ApiKeyRepo, AuditRepo, Clock, EmailSender, OrgRepo, PasswordHasher, PermissionRepo, RoleRepo,
+    SessionRepo, TokenGenerator, UserRepo,
 };
 use core_infra::{
-    Argon2Hasher, PgApiKeyRepo, PgAuditRepo, PgOrgRepo, PgPermissionRepo, PgRoleRepo,
-    PgSessionRepo, PgUserRepo, RandTokenGenerator, SystemClock,
+    Argon2Hasher, NoopMailer, PgApiKeyRepo, PgAuditRepo, PgOrgRepo, PgPermissionRepo, PgRoleRepo,
+    PgSessionRepo, PgUserRepo, RandTokenGenerator, SmtpMailer, SystemClock,
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -47,6 +47,21 @@ impl AppState {
         let tokens: Arc<dyn TokenGenerator> = Arc::new(RandTokenGenerator);
         let clock: Arc<dyn Clock> = Arc::new(SystemClock);
 
+        // SMTP mailer (Mailpit in dev); falls back to a logging no-op if SMTP_HOST
+        // is unset or the transport can't be built.
+        let mailer: Arc<dyn EmailSender> = match cfg.smtp_host.as_deref() {
+            Some(host) => {
+                match SmtpMailer::new(host, cfg.smtp_port, &cfg.email_from, &cfg.email_from_name) {
+                    Ok(m) => Arc::new(m),
+                    Err(e) => {
+                        tracing::warn!("email disabled: {e}");
+                        Arc::new(NoopMailer)
+                    }
+                }
+            }
+            None => Arc::new(NoopMailer),
+        };
+
         let auditor = Auditor::new(audit_repo.clone(), clock.clone());
 
         let auth = Arc::new(AuthService::new(
@@ -65,6 +80,7 @@ impl AppState {
             sessions_repo.clone(),
             org_repo.clone(),
             hasher.clone(),
+            mailer.clone(),
             auditor.clone(),
             clock.clone(),
         ));

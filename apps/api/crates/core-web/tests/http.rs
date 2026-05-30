@@ -19,6 +19,10 @@ fn test_cfg() -> WebConfig {
         cookie_name: "core_sid".into(),
         cookie_secure: false,
         session_ttl: Duration::days(7),
+        smtp_host: None,
+        smtp_port: 1026,
+        email_from: "no-reply@test.local".into(),
+        email_from_name: "Test".into(),
     }
 }
 

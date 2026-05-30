@@ -55,6 +55,9 @@ sha2 = "0.11"
 # OS CSPRNG for salts + tokens, independent of argon2's rand_core cluster.
 getrandom = "0.4"
 
+# Email (SMTP). Plaintext to local Mailpit, so no TLS backend is pulled in.
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1", "builder"] }
+
 # Errors / async traits / logging
 thiserror = "2"
 async-trait = "0.1"

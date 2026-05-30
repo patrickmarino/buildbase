@@ -10,7 +10,10 @@ use core_domain::entities::role::BuiltinRole;
 use core_domain::entities::{PermissionCategory, Role, User, UserStatus};
 use core_domain::error::DomainError;
 use core_domain::ids::{RoleId, UserId};
-use core_domain::ports::{OrgRepo, PasswordHasher, RoleRepo, SessionRepo, UserFilter, UserRepo};
+use core_domain::ports::{
+    EmailSender, OrgRepo, OutgoingEmail, PasswordHasher, RoleRepo, SessionRepo, UserFilter,
+    UserRepo,
+};
 use core_domain::services::{password_policy, role_guards};
 use std::sync::Arc;
 
@@ -21,6 +24,7 @@ pub struct UserService {
     sessions: Arc<dyn SessionRepo>,
     orgs: Arc<dyn OrgRepo>,
     hasher: Arc<dyn PasswordHasher>,
+    mailer: Arc<dyn EmailSender>,
     auditor: Auditor,
     clock: Arc<dyn core_domain::ports::Clock>,
 }
@@ -39,6 +43,7 @@ impl UserService {
         sessions: Arc<dyn SessionRepo>,
         orgs: Arc<dyn OrgRepo>,
         hasher: Arc<dyn PasswordHasher>,
+        mailer: Arc<dyn EmailSender>,
         auditor: Auditor,
         clock: Arc<dyn core_domain::ports::Clock>,
     ) -> Self {
@@ -48,8 +53,17 @@ impl UserService {
             sessions,
             orgs,
             hasher,
+            mailer,
             auditor,
             clock,
+        }
+    }
+
+    /// Best-effort email: a delivery failure never fails the surrounding use-case
+    /// (the user is still created/invited); it's only logged.
+    async fn send_email(&self, email: OutgoingEmail) {
+        if let Err(e) = self.mailer.send(&email).await {
+            tracing::warn!("email to {} failed: {e}", email.to_address);
         }
     }
 
@@ -122,7 +136,32 @@ impl UserService {
                 )),
             )
             .await?;
+
+        let org_name = self.org_name(ctx).await;
+        self.send_email(OutgoingEmail {
+            to_address: user.email.to_string(),
+            to_name: user.name.clone(),
+            subject: format!("You're invited to {org_name}"),
+            body: format!(
+                "Hi {name},\n\nYou've been invited to join {org_name} as {role}. Visit the \
+                 admin to set your password and sign in.\n\n— {org_name}",
+                name = user.name,
+                role = role.name,
+            ),
+        })
+        .await;
         Ok(user)
+    }
+
+    /// The org's display name, best-effort (for email copy).
+    async fn org_name(&self, ctx: &ActorContext) -> String {
+        self.orgs
+            .get(ctx.actor.org_id)
+            .await
+            .ok()
+            .flatten()
+            .map(|o| o.name)
+            .unwrap_or_else(|| "the studio".into())
     }
 
     /// Create a user manually with their basic information and an initial
@@ -205,6 +244,21 @@ impl UserService {
                 )),
             )
             .await?;
+
+        self.send_email(OutgoingEmail {
+            to_address: user.email.to_string(),
+            to_name: user.name.clone(),
+            subject: format!("Your {} account is ready", org.name),
+            body: format!(
+                "Hi {name},\n\nAn account has been created for you at {org} as {role}. You can \
+                 sign in now with your email and the password you were given, then change it \
+                 from your profile.\n\n— {org}",
+                name = user.name,
+                org = org.name,
+                role = role.name,
+            ),
+        })
+        .await;
         Ok(user)
     }
 
