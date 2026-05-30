@@ -10,6 +10,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: CI only needs to read the repo. No third-party action can use
+# the token to mutate the repository.
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -38,11 +43,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Honors apps/api/rust-toolchain.toml (pins 1.96 for sqlx 0.9).
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.96.0"
-          components: clippy, rustfmt
+      # Use the runner's preinstalled rustup; rust-toolchain.toml pins 1.96 (for
+      # sqlx 0.9) and its components, so no third-party toolchain action is needed.
+      - name: Install Rust toolchain
+        working-directory: apps/api
+        run: |
+          rustup show active-toolchain
+          rustc --version && cargo clippy --version
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -67,9 +74,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # pnpm version comes from the `packageManager` field in package.json.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -119,17 +125,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.96.0"
+      - name: Install Rust toolchain
+        working-directory: apps/api
+        run: rustup show active-toolchain && rustc --version
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/api
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
