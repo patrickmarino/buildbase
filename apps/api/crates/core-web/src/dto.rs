@@ -34,6 +34,12 @@ pub struct LoginReq {
 }
 
 #[derive(Deserialize)]
+pub struct AcceptInviteReq {
+    pub token: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InviteReq {
     pub email: String,

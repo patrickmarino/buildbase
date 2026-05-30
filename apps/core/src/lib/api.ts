@@ -74,6 +74,8 @@ export const api = {
   // ── auth ──
   login: (email: string, password: string) =>
     request<MeDto>("POST", "/auth/login", { email, password }),
+  acceptInvite: (token: string, password: string) =>
+    request<MeDto>("POST", "/auth/accept-invite", { token, password }),
   logout: () => request<void>("POST", "/auth/logout"),
   me: () => request<MeDto>("GET", "/auth/me"),
 

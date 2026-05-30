@@ -4,10 +4,10 @@
 use super::RepoResult;
 use crate::entities::email::Email;
 use crate::entities::{
-    ApiKey, ApiKeyStatus, AuditEvent, Organization, PermissionMatrix, PermissionState, Role,
-    Session, User, UserStatus,
+    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PermissionMatrix, PermissionState,
+    Role, Session, User, UserStatus,
 };
-use crate::ids::{ApiKeyId, OrgId, RoleId, SessionId, UserId};
+use crate::ids::{ApiKeyId, InviteTokenId, OrgId, RoleId, SessionId, UserId};
 use async_trait::async_trait;
 
 /// Filter for listing users (mirrors the Users page toolbar).
@@ -111,4 +111,13 @@ pub trait SessionRepo: Send + Sync {
     async fn delete(&self, id: &SessionId) -> RepoResult<()>;
     /// Revoke every session for a user — used on deactivate and role change.
     async fn delete_all_for_user(&self, user: UserId) -> RepoResult<()>;
+}
+
+#[async_trait]
+pub trait InviteTokenRepo: Send + Sync {
+    async fn insert(&self, token: &InviteToken) -> RepoResult<()>;
+    async fn find_by_hash(&self, token_hash: &str) -> RepoResult<Option<InviteToken>>;
+    async fn delete(&self, id: InviteTokenId) -> RepoResult<()>;
+    /// Invalidate any outstanding tokens for a user (called on re-invite / accept).
+    async fn delete_for_user(&self, user: UserId) -> RepoResult<()>;
 }

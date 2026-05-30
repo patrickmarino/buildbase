@@ -2,7 +2,7 @@
 //! `me` (the SPA bootstrap payload).
 
 use crate::cookies::{clear_cookie, session_cookie};
-use crate::dto::{me_dto, LoginReq, MeDto};
+use crate::dto::{me_dto, AcceptInviteReq, LoginReq, MeDto};
 use crate::error::{WebError, WebResult};
 use crate::extractors::CurrentUser;
 use crate::state::AppState;
@@ -22,6 +22,22 @@ pub async fn login(
         .login(state.default_org, &req.email, &req.password)
         .await?;
     // Resolve the full context (role + matrix) for the bootstrap payload.
+    let ctx = state
+        .auth
+        .resolve_actor(&session.id, None)
+        .await
+        .map_err(|_| WebError::unauthorized())?;
+    let cookie = session_cookie(&state.cfg, session.id.0);
+    Ok((jar.add(cookie), Json(me_dto(&ctx))))
+}
+
+/// Exchange an invitation token for a password + active account, and sign in.
+pub async fn accept_invite(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Json(req): Json<AcceptInviteReq>,
+) -> WebResult<(CookieJar, Json<MeDto>)> {
+    let (_user, session) = state.auth.accept_invite(&req.token, &req.password).await?;
     let ctx = state
         .auth
         .resolve_actor(&session.id, None)

@@ -340,3 +340,94 @@ async fn create_user_rejects_weak_password_422(pool: PgPool) {
     let body = body_json(resp).await;
     assert_eq!(body["error"], "password_policy");
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn accept_invite_sets_password_and_signs_in(pool: PgPool) {
+    use core_app::testing::CapturingMailer;
+    use std::sync::Arc;
+
+    let hasher = Argon2Hasher;
+    ensure_seeded(
+        &pool,
+        &hasher,
+        &SeedConfig {
+            org_name: "MadeSpace Studio".into(),
+            org_domain: Some("madespace.co".into()),
+            owner_email: "elena@madespace.co".into(),
+            owner_name: "Elena Marchetti".into(),
+            owner_password: "owner-password-123!".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let org = sole_org_id(&pool).await.unwrap().unwrap();
+    let mailer = Arc::new(CapturingMailer::default());
+    let app = build_router(AppState::with_mailer(pool, test_cfg(), org, mailer.clone()));
+
+    // owner logs in and invites a user
+    let cookie = login(&app).await;
+    let invited = "newhire@madespace.co";
+    let resp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/api/users/invite",
+            Some(&cookie),
+            json!({ "email": invited, "role": "member" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // pull the accept-invite token out of the captured email
+    let body = mailer.last().expect("invite email").body;
+    let token = body
+        .split("token=")
+        .nth(1)
+        .and_then(|s| s.split_whitespace().next())
+        .expect("token in link")
+        .to_string();
+
+    // accept the invite → sets a password + signs in
+    let resp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/accept-invite",
+            None,
+            json!({ "token": token, "password": "Sufficient1!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert!(resp.headers().get(header::SET_COOKIE).is_some());
+    let me = body_json(resp).await;
+    assert_eq!(me["user"]["email"], invited);
+
+    // and can log in normally afterwards
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/login",
+            None,
+            json!({ "email": invited, "password": "Sufficient1!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn accept_invite_bad_token_is_401(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/accept-invite",
+            None,
+            json!({ "token": "nonsense", "password": "Sufficient1!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}

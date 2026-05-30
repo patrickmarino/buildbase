@@ -8,8 +8,8 @@ use core_domain::entities::organization::{
 };
 use core_domain::entities::role::BuiltinRole;
 use core_domain::entities::{
-    ApiKey, ApiKeyStatus, AuditEvent, Organization, PermissionCategory, PermissionState, Role,
-    Scope, Session, User, UserStatus,
+    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PermissionCategory,
+    PermissionState, Role, Scope, Session, User, UserStatus,
 };
 use core_domain::ids::*;
 use core_domain::ports::{RepoError, RepoResult};
@@ -131,6 +131,16 @@ pub fn api_key_from_row(row: &PgRow) -> RepoResult<ApiKey> {
             .ok_or_else(|| decode_err("key status", &status_s))?,
         created_at: row.try_get("created_at").map_err(into_repo)?,
         last_used_at: row.try_get("last_used_at").map_err(into_repo)?,
+    })
+}
+
+pub fn invite_token_from_row(row: &PgRow) -> RepoResult<InviteToken> {
+    Ok(InviteToken {
+        id: InviteTokenId::from_uuid(row.try_get("id").map_err(into_repo)?),
+        user_id: UserId::from_uuid(row.try_get("user_id").map_err(into_repo)?),
+        token_hash: row.try_get("token_hash").map_err(into_repo)?,
+        created_at: row.try_get("created_at").map_err(into_repo)?,
+        expires_at: row.try_get("expires_at").map_err(into_repo)?,
     })
 }
 

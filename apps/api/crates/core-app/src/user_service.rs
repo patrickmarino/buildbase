@@ -7,15 +7,19 @@ use crate::ctx::ActorContext;
 use crate::error::AppError;
 use core_domain::entities::email::Email;
 use core_domain::entities::role::BuiltinRole;
-use core_domain::entities::{PermissionCategory, Role, User, UserStatus};
+use core_domain::entities::{InviteToken, PermissionCategory, Role, User, UserStatus};
 use core_domain::error::DomainError;
-use core_domain::ids::{RoleId, UserId};
+use core_domain::ids::{InviteTokenId, RoleId, UserId};
 use core_domain::ports::{
-    EmailSender, OrgRepo, OutgoingEmail, PasswordHasher, RoleRepo, SessionRepo, UserFilter,
-    UserRepo,
+    EmailSender, InviteTokenRepo, OrgRepo, OutgoingEmail, PasswordHasher, RoleRepo, SessionRepo,
+    TokenGenerator, UserFilter, UserRepo,
 };
 use core_domain::services::{password_policy, role_guards};
 use std::sync::Arc;
+use time::Duration;
+
+/// How long an invitation link stays valid.
+const INVITE_TTL: Duration = Duration::days(7);
 
 #[derive(Clone)]
 pub struct UserService {
@@ -23,8 +27,12 @@ pub struct UserService {
     roles: Arc<dyn RoleRepo>,
     sessions: Arc<dyn SessionRepo>,
     orgs: Arc<dyn OrgRepo>,
+    invite_tokens: Arc<dyn InviteTokenRepo>,
     hasher: Arc<dyn PasswordHasher>,
+    tokens: Arc<dyn TokenGenerator>,
     mailer: Arc<dyn EmailSender>,
+    /// Base URL of the SPA — used to build the accept-invite link.
+    app_base_url: String,
     auditor: Auditor,
     clock: Arc<dyn core_domain::ports::Clock>,
 }
@@ -42,8 +50,11 @@ impl UserService {
         roles: Arc<dyn RoleRepo>,
         sessions: Arc<dyn SessionRepo>,
         orgs: Arc<dyn OrgRepo>,
+        invite_tokens: Arc<dyn InviteTokenRepo>,
         hasher: Arc<dyn PasswordHasher>,
+        tokens: Arc<dyn TokenGenerator>,
         mailer: Arc<dyn EmailSender>,
+        app_base_url: String,
         auditor: Auditor,
         clock: Arc<dyn core_domain::ports::Clock>,
     ) -> Self {
@@ -52,8 +63,11 @@ impl UserService {
             roles,
             sessions,
             orgs,
+            invite_tokens,
             hasher,
+            tokens,
             mailer,
+            app_base_url,
             auditor,
             clock,
         }
@@ -137,14 +151,32 @@ impl UserService {
             )
             .await?;
 
+        // Mint a single-use accept-invite token and email the link.
+        let full = self.tokens.new_invite_token();
+        let now = self.clock.now();
+        let _ = self.invite_tokens.delete_for_user(user.id).await; // invalidate any prior
+        self.invite_tokens
+            .insert(&InviteToken {
+                id: InviteTokenId::new(),
+                user_id: user.id,
+                token_hash: self.tokens.hash_api_token(&full),
+                created_at: now,
+                expires_at: now + INVITE_TTL,
+            })
+            .await?;
+
         let org_name = self.org_name(ctx).await;
+        let accept_url = format!(
+            "{}/accept-invite?token={full}",
+            self.app_base_url.trim_end_matches('/')
+        );
         self.send_email(OutgoingEmail {
             to_address: user.email.to_string(),
             to_name: user.name.clone(),
             subject: format!("You're invited to {org_name}"),
             body: format!(
-                "Hi {name},\n\nYou've been invited to join {org_name} as {role}. Visit the \
-                 admin to set your password and sign in.\n\n— {org_name}",
+                "Hi {name},\n\nYou've been invited to join {org_name} as {role}. Set your \
+                 password and sign in:\n\n{accept_url}\n\nThis link expires in 7 days.\n\n— {org_name}",
                 name = user.name,
                 role = role.name,
             ),

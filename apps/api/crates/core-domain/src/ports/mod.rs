@@ -8,8 +8,8 @@
 mod repos;
 
 pub use repos::{
-    ApiKeyRepo, AuditQuery, AuditRepo, OrgRepo, PermissionRepo, RoleRepo, SessionRepo, UserFilter,
-    UserRepo,
+    ApiKeyRepo, AuditQuery, AuditRepo, InviteTokenRepo, OrgRepo, PermissionRepo, RoleRepo,
+    SessionRepo, UserFilter, UserRepo,
 };
 
 use crate::entities::organization::PasswordPolicy;
@@ -65,6 +65,9 @@ pub trait TokenGenerator: Send + Sync {
     fn new_api_token(&self) -> ApiToken;
     /// Hash an API token for storage / lookup (SHA-256 hex).
     fn hash_api_token(&self, full: &str) -> String;
+    /// A high-entropy single-use invitation token (emailed to the invitee).
+    /// Hash it with [`Self::hash_api_token`] for storage.
+    fn new_invite_token(&self) -> String;
 }
 
 /// The clock. Injectable so tests can pin time.

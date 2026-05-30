@@ -17,8 +17,8 @@ use core_domain::entities::organization::{
 };
 use core_domain::entities::role::BuiltinRole;
 use core_domain::entities::{
-    ApiKey, ApiKeyStatus, AuditEvent, Organization, PermissionMatrix, PermissionState, Role,
-    Session, User, UserStatus,
+    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PermissionMatrix, PermissionState,
+    Role, Session, User, UserStatus,
 };
 use core_domain::ids::*;
 use core_domain::ports::*;
@@ -40,6 +40,7 @@ pub struct Store {
     pub audit: Mutex<Vec<AuditEvent>>,
     pub keys: Mutex<HashMap<ApiKeyId, ApiKey>>,
     pub sessions: Mutex<HashMap<SessionId, Session>>,
+    pub invite_tokens: Mutex<HashMap<InviteTokenId, InviteToken>>,
 }
 
 impl Store {
@@ -377,6 +378,43 @@ impl SessionRepo for SessionRepoFake {
     }
 }
 
+// ── InviteTokenRepo ───────────────────────────────────────────
+pub struct InviteTokenRepoFake(pub Arc<Store>);
+
+#[async_trait::async_trait]
+impl InviteTokenRepo for InviteTokenRepoFake {
+    async fn insert(&self, token: &InviteToken) -> RepoResult<()> {
+        self.0
+            .invite_tokens
+            .lock()
+            .unwrap()
+            .insert(token.id, token.clone());
+        Ok(())
+    }
+    async fn find_by_hash(&self, token_hash: &str) -> RepoResult<Option<InviteToken>> {
+        Ok(self
+            .0
+            .invite_tokens
+            .lock()
+            .unwrap()
+            .values()
+            .find(|t| t.token_hash == token_hash)
+            .cloned())
+    }
+    async fn delete(&self, id: InviteTokenId) -> RepoResult<()> {
+        self.0.invite_tokens.lock().unwrap().remove(&id);
+        Ok(())
+    }
+    async fn delete_for_user(&self, user: UserId) -> RepoResult<()> {
+        self.0
+            .invite_tokens
+            .lock()
+            .unwrap()
+            .retain(|_, t| t.user_id != user);
+        Ok(())
+    }
+}
+
 // ── Fakes for the capability ports ────────────────────────────
 pub struct FixedClock(pub OffsetDateTime);
 impl Clock for FixedClock {
@@ -416,6 +454,10 @@ impl TokenGenerator for FakeTokens {
     }
     fn hash_api_token(&self, full: &str) -> String {
         format!("h::{full}")
+    }
+    fn new_invite_token(&self) -> String {
+        let n = self.counter.fetch_add(1, Ordering::Relaxed);
+        format!("invite-tok-{n}")
     }
 }
 
@@ -614,6 +656,9 @@ impl World {
     }
     pub fn sessions_repo(&self) -> Arc<dyn SessionRepo> {
         Arc::new(SessionRepoFake(self.store.clone()))
+    }
+    pub fn invite_tokens_repo(&self) -> Arc<dyn InviteTokenRepo> {
+        Arc::new(InviteTokenRepoFake(self.store.clone()))
     }
     pub fn audit_repo(&self) -> Arc<dyn AuditRepo> {
         Arc::new(AuditRepoFake(self.store.clone()))

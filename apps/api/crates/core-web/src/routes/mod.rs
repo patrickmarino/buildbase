@@ -37,6 +37,7 @@ pub fn build_router(state: AppState) -> Router {
     let api = Router::new()
         .route("/health", get(health))
         .route("/auth/login", post(auth::login))
+        .route("/auth/accept-invite", post(auth::accept_invite))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/me", get(auth::me))
         .route("/users", get(users::list).post(users::create))

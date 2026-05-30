@@ -4,11 +4,14 @@
 use crate::ctx::ActorContext;
 use crate::error::AppError;
 use core_domain::entities::email::Email;
-use core_domain::entities::Session;
+use core_domain::entities::{Session, User, UserStatus};
+use core_domain::error::DomainError;
 use core_domain::ids::{OrgId, SessionId};
 use core_domain::ports::{
-    Clock, PasswordHasher, PermissionRepo, RoleRepo, SessionRepo, TokenGenerator, UserRepo,
+    Clock, InviteTokenRepo, OrgRepo, PasswordHasher, PermissionRepo, RoleRepo, SessionRepo,
+    TokenGenerator, UserRepo,
 };
+use core_domain::services::password_policy;
 use std::sync::Arc;
 use time::Duration;
 
@@ -18,6 +21,8 @@ pub struct AuthService {
     roles: Arc<dyn RoleRepo>,
     permissions: Arc<dyn PermissionRepo>,
     sessions: Arc<dyn SessionRepo>,
+    orgs: Arc<dyn OrgRepo>,
+    invite_tokens: Arc<dyn InviteTokenRepo>,
     hasher: Arc<dyn PasswordHasher>,
     tokens: Arc<dyn TokenGenerator>,
     clock: Arc<dyn Clock>,
@@ -31,6 +36,8 @@ impl AuthService {
         roles: Arc<dyn RoleRepo>,
         permissions: Arc<dyn PermissionRepo>,
         sessions: Arc<dyn SessionRepo>,
+        orgs: Arc<dyn OrgRepo>,
+        invite_tokens: Arc<dyn InviteTokenRepo>,
         hasher: Arc<dyn PasswordHasher>,
         tokens: Arc<dyn TokenGenerator>,
         clock: Arc<dyn Clock>,
@@ -41,11 +48,69 @@ impl AuthService {
             roles,
             permissions,
             sessions,
+            orgs,
+            invite_tokens,
             hasher,
             tokens,
             clock,
             session_ttl,
         }
+    }
+
+    /// Accept an invitation: exchange a valid token for a password + an active
+    /// account, and start a session (so the user is signed in). Invalid/expired
+    /// tokens and already-accepted invites are rejected; the password must satisfy
+    /// the org policy.
+    pub async fn accept_invite(
+        &self,
+        token: &str,
+        new_password: &str,
+    ) -> Result<(User, Session), AppError> {
+        let hash = self.tokens.hash_api_token(token);
+        let invite = self
+            .invite_tokens
+            .find_by_hash(&hash)
+            .await?
+            .ok_or(AppError::Unauthorized)?;
+
+        let now = self.clock.now();
+        if invite.is_expired(now) {
+            let _ = self.invite_tokens.delete(invite.id).await;
+            return Err(AppError::Unauthorized);
+        }
+
+        let mut user = self
+            .users
+            .find_by_id(invite.user_id)
+            .await?
+            .ok_or(AppError::Unauthorized)?;
+        if user.status != UserStatus::Invited {
+            return Err(DomainError::Invalid("this invitation is no longer valid".into()).into());
+        }
+
+        let org = self
+            .orgs
+            .get(user.org_id)
+            .await?
+            .ok_or_else(|| DomainError::NotFound("organization".into()))?;
+        password_policy::validate_password(new_password, &org.password_policy)
+            .map_err(DomainError::PasswordPolicy)?;
+
+        user.password_hash = Some(self.hasher.hash(new_password)?);
+        user.status = UserStatus::Active;
+        user.last_active_at = Some(now);
+        self.users.update(&user).await?;
+        // Consume every outstanding token for this user.
+        self.invite_tokens.delete_for_user(user.id).await?;
+
+        let session = Session {
+            id: self.tokens.new_session_id(),
+            user_id: user.id,
+            created_at: now,
+            expires_at: now + self.session_ttl,
+        };
+        self.sessions.create(&session).await?;
+        Ok((user, session))
     }
 
     /// Verify credentials and start a session. All failure modes collapse to

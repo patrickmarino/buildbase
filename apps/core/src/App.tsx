@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { AppProvider, ToastHost, useStore } from "./store/AppContext";
 import { Sidebar, type PageId } from "./components/Shell";
 import { LoginPage } from "./pages/LoginPage";
+import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { RolesPage } from "./pages/RolesPage";
 import { UsersPage } from "./pages/UsersPage";
 import { OrgPage } from "./pages/OrgPage";
@@ -21,7 +22,13 @@ function AppShell() {
   const [page, setPage] = useState<PageId>("roles");
 
   if (!ready) return null;
-  if (!me) return <LoginPage />;
+  if (!me) {
+    // Unauthenticated: a `/accept-invite?token=…` link sets a password instead of logging in.
+    const inviteToken = window.location.pathname.includes("accept-invite")
+      ? new URLSearchParams(window.location.search).get("token")
+      : null;
+    return inviteToken ? <AcceptInvitePage token={inviteToken} /> : <LoginPage />;
+  }
 
   const Page = PAGES[page];
   const style = { ["--accent"]: accent, ["--r"]: "4px" } as React.CSSProperties;
