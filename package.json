@@ -1,0 +1,25 @@
+{
+  "name": "core-admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core — MadeSpace identity & RBAC admin (Axum + React monorepo)",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "bootstrap": "bash scripts/bootstrap.sh",
+    "dev": "docker compose --env-file .env -f infra/docker-compose.yml up -d && turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
+    "db:reset": "bash scripts/db-reset.sh",
+    "migrate": "bash scripts/migrate.sh",
+    "e2e": "turbo run test --filter=e2e"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3"
+  }
+}

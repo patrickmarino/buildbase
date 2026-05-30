@@ -1,0 +1,9 @@
+/* App root sizing, ported from the prototype's Core.html inline styles. */
+html,
+body {
+  height: 100%;
+  background: var(--ms-gold-50);
+}
+#root {
+  height: 100%;
+}

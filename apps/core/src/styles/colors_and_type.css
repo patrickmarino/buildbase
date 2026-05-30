@@ -1,0 +1,272 @@
+/*
+ * MadeSpace — Colors & Type Foundations
+ * Single source of truth for color tokens, type scale, and semantic styles.
+ * Imported by every preview card and UI kit.
+ */
+
+/* ─────────────────────────────────────────────
+   FONTS
+   ───────────────────────────────────────────── */
+
+/* Display: Playfair Display (logo + editorial display) */
+/* Headings: Oswald (condensed sans for short headings + labels) */
+/* Body: Merriweather (serif body copy) */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Oswald:wght@200..700&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap');
+
+:root {
+  /* ─── BRAND PALETTE ─────────────────────────
+     Direct from MadeSpace guidelines (pg.18)
+     ──────────────────────────────────────────── */
+  --ms-gold:        #D6B982;   /* logo element — champagne gold */
+  --ms-charcoal:    #4D4D4F;   /* logo wordmark — primary text */
+
+  /* Grayscale ramp (guidelines pg.18) */
+  --ms-black:       #000000;
+  --ms-gray-700:    #4D4D4F;   /* same as charcoal */
+  --ms-gray-400:    #A7A9AC;
+  --ms-gray-200:    #E6E7E8;
+  --ms-white:       #FFFFFF;
+
+  /* ─── EXTENDED PALETTE (derived) ─────────────
+     Tints + shades of gold for surfaces, hovers, etc.
+     Kept inside the brand language.
+     ──────────────────────────────────────────── */
+  --ms-gold-50:     #FBF7EE;   /* cream / paper */
+  --ms-gold-100:    #F4ECD6;   /* light champagne wash */
+  --ms-gold-200:    #EBDDB6;
+  --ms-gold-400:    #D6B982;   /* = ms-gold */
+  --ms-gold-600:    #B89A60;   /* darker hover for gold buttons */
+  --ms-gold-800:    #8C7140;   /* deep gold for press / accent rules */
+
+  --ms-charcoal-900:#2E2E30;   /* deeper than the brand charcoal */
+  --ms-charcoal-700:#4D4D4F;   /* = ms-charcoal */
+  --ms-charcoal-500:#6E6E70;
+
+  /* Neutral surface scale */
+  --ms-surface:     #FFFFFF;
+  --ms-surface-alt: #FBF7EE;   /* cream paper */
+  --ms-surface-mute:#F5F4F0;
+  --ms-divider:     #E6E7E8;
+  --ms-divider-strong:#A7A9AC;
+
+  /* ─── SEMANTIC TOKENS ───────────────────────── */
+  --bg:             var(--ms-white);
+  --bg-alt:         var(--ms-gold-50);
+  --bg-inverse:     var(--ms-charcoal-900);
+
+  --fg:             var(--ms-charcoal);
+  --fg-muted:       var(--ms-charcoal-500);
+  --fg-subtle:      var(--ms-gray-400);
+  --fg-inverse:     var(--ms-white);
+  --fg-accent:      var(--ms-gold-600);    /* gold on white needs to be darker for AA */
+
+  --accent:         var(--ms-gold);
+  --accent-hover:   var(--ms-gold-600);
+  --accent-press:   var(--ms-gold-800);
+
+  --border:         var(--ms-divider);
+  --border-strong:  var(--ms-divider-strong);
+  --border-accent:  var(--ms-gold-400);
+
+  /* ─── TYPE FAMILIES ─────────────────────────── */
+  --font-display:  "Playfair Display", "Iowan Old Style", Georgia, serif;
+  --font-heading:  "Oswald", "Impact", "Arial Narrow Bold", sans-serif;
+  --font-body:     "Merriweather", Georgia, "Times New Roman", serif;
+  --font-mono:     ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  /* ─── TYPE SCALE (modular, 1.250 — Major Third) ── */
+  --fs-2xs: 11px;
+  --fs-xs:  12px;
+  --fs-sm:  14px;
+  --fs-md:  16px;     /* body default */
+  --fs-lg:  18px;
+  --fs-xl:  22px;
+  --fs-2xl: 28px;
+  --fs-3xl: 36px;
+  --fs-4xl: 48px;
+  --fs-5xl: 64px;
+  --fs-6xl: 84px;
+  --fs-7xl: 112px;
+
+  --lh-tight:   1.05;
+  --lh-snug:    1.2;
+  --lh-normal:  1.5;
+  --lh-loose:   1.75;
+
+  --tracking-tight:   -0.01em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.06em;
+  --tracking-wider:   0.18em;       /* Oswald eyebrow caps */
+
+  /* ─── SPACING (4px base) ───────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ─── RADII ──────────────────────────────────
+     The brand is editorial / serif-driven, so we
+     stay close to rectangular. Pill only for
+     CTAs in informal contexts.
+     ──────────────────────────────────────────── */
+  --radius-none: 0;
+  --radius-xs:   2px;
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-pill: 999px;
+
+  /* ─── SHADOWS / ELEVATION ────────────────────
+     Soft, warm, low-contrast. Never blue-tinted.
+     ──────────────────────────────────────────── */
+  --shadow-1: 0 1px 2px rgba(46, 46, 48, 0.06);
+  --shadow-2: 0 2px 8px rgba(46, 46, 48, 0.08);
+  --shadow-3: 0 8px 24px rgba(46, 46, 48, 0.10);
+  --shadow-4: 0 18px 48px rgba(46, 46, 48, 0.14);
+
+  /* Inner / inset for capsule chips */
+  --shadow-inset: inset 0 0 0 1px rgba(214, 185, 130, 0.4);
+
+  /* ─── MOTION ─────────────────────────────────
+     Calm, never bouncy. Editorial easing.
+     ──────────────────────────────────────────── */
+  --ease-standard:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-entrance:   cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit:       cubic-bezier(0.4, 0, 1, 1);
+  --dur-fast:    140ms;
+  --dur-normal:  240ms;
+  --dur-slow:    480ms;
+}
+
+/* ─────────────────────────────────────────────
+   SEMANTIC TYPE STYLES — utility classes
+   Use these directly: <h1 class="ms-display-1">
+   ───────────────────────────────────────────── */
+
+.ms-display-1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-7xl);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+}
+.ms-display-2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-5xl);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--fg);
+}
+.ms-display-3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-4xl);
+  line-height: var(--lh-snug);
+  color: var(--fg);
+}
+
+.ms-h1 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: var(--fs-4xl);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.ms-h2 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: var(--fs-2xl);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.ms-h3 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: var(--fs-xl);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.ms-eyebrow {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  line-height: 1;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--fg-accent);
+}
+
+.ms-body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--fs-md);
+  line-height: var(--lh-loose);
+  color: var(--fg);
+}
+.ms-body-lg {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: var(--fs-lg);
+  line-height: var(--lh-loose);
+  color: var(--fg);
+}
+.ms-body-sm {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--fg-muted);
+}
+.ms-caption {
+  font-family: var(--font-heading);
+  font-weight: 300;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.ms-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--fg);
+}
+
+/* Inline brand mark — used inside body copy as a hairline gold accent rule */
+.ms-rule {
+  display: inline-block;
+  width: 48px;
+  height: 1px;
+  background: var(--ms-gold);
+  vertical-align: middle;
+}
+
+/* Page reset for card previews */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

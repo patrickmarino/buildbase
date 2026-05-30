@@ -1,0 +1,4 @@
+[toolchain]
+# Pinned to a toolchain new enough for sqlx 0.9 (requires rustc >= 1.94).
+channel = "1.96"
+components = ["rustfmt", "clippy"]

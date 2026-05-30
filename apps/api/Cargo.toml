@@ -1,0 +1,76 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core-domain",
+    "crates/core-app",
+    "crates/core-infra",
+    "crates/core-web",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "MIT"
+rust-version = "1.82"
+
+[workspace.dependencies]
+# Versions verified against crates.io (latest stable) on 2026-05-30.
+
+# Async runtime
+tokio = { version = "1.52", features = ["rt-multi-thread", "macros", "signal", "net"] }
+
+# Web
+axum = { version = "0.8.9", features = ["macros"] }
+axum-extra = { version = "0.12", features = ["cookie"] }   # requires axum ^0.8.9
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
+
+# Database. No TLS feature: we connect to local Postgres without TLS, which
+# sidesteps sqlx 0.9's rustls crypto-provider split. Add tls-rustls-ring if a
+# TLS-only Postgres is targeted in production.
+sqlx = { version = "0.9", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "uuid",
+    "time",
+    "json",
+    "macros",
+    "migrate",
+] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Domain primitives
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
+
+# Crypto / random. argon2 0.5 pins password-hash ^0.5; we use its re-exports
+# (argon2::password_hash::{SaltString, rand_core::OsRng}) for hashing AND token
+# randomness, so we avoid a second rand_core version in the tree.
+argon2 = "0.5"
+base64 = "0.22"
+sha2 = "0.10"
+# OS CSPRNG for salts + tokens, independent of argon2's rand_core cluster.
+getrandom = "0.3"
+
+# Errors / async traits / logging
+thiserror = "2"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+anyhow = "1"
+
+# Test deps
+reqwest = { version = "0.13", default-features = false, features = ["json", "cookies", "http2"] }
+
+# Internal crates
+core-domain = { path = "crates/core-domain" }
+core-app = { path = "crates/core-app" }
+core-infra = { path = "crates/core-infra" }
+
+[profile.dev]
+# Faster incremental test cycles.
+opt-level = 0

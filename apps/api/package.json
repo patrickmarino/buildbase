@@ -1,0 +1,12 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Thin Turbo wrapper around the Rust Axum API (cargo).",
+  "scripts": {
+    "dev": "cargo run -p core-web",
+    "build": "cargo build --release",
+    "test": "cargo test",
+    "lint": "cargo clippy --all-targets -- -D warnings"
+  }
+}

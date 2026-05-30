@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: core-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-core}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-core}
+      POSTGRES_DB: ${POSTGRES_DB:-core}
+    ports:
+      # Host port is 5440 by default to avoid clashing with other local
+      # Postgres instances; override with PG_HOST_PORT.
+      - "${PG_HOST_PORT:-5440}:5432"
+    volumes:
+      - core_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-core} -d ${POSTGRES_DB:-core}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  core_pg_data:
