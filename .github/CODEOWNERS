@@ -1,0 +1,19 @@
+# Code owners for review routing. Security-sensitive paths (authorization,
+# password hashing, sessions, schema) are owned so changes auto-request review.
+# See .claude/docs/SECURITY.md for the invariants behind these.
+
+# Default owner for everything.
+*                                                              @patrickmarino
+
+# ── Security-sensitive (authz / crypto / sessions / schema) ──
+/apps/api/crates/core-domain/src/services/authz.rs             @patrickmarino
+/apps/api/crates/core-domain/src/services/role_guards.rs       @patrickmarino
+/apps/api/crates/core-infra/src/argon2_hasher.rs               @patrickmarino
+/apps/api/crates/core-infra/src/rand_token.rs                  @patrickmarino
+/apps/api/crates/core-web/src/extractors.rs                    @patrickmarino
+/apps/api/crates/core-web/src/cookies.rs                       @patrickmarino
+/apps/api/migrations/                                          @patrickmarino
+/apps/core/src/lib/api.ts                                      @patrickmarino
+
+# ── CI / repo config ──
+/.github/                                                      @patrickmarino
