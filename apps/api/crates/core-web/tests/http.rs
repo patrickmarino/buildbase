@@ -547,3 +547,32 @@ async fn reset_password_bad_token_is_401(pool: PgPool) {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn openapi_spec_is_served(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let resp = app
+        .oneshot(get("/api-docs/openapi.json", None))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let spec = body_json(resp).await;
+    // A few representative paths are documented.
+    assert!(spec["paths"]["/api/auth/login"].is_object());
+    assert!(spec["paths"]["/api/permissions/matrix"].is_object());
+    assert!(spec["paths"]["/api/keys/{id}/revoke"].is_object());
+    // The session cookie security scheme is declared.
+    assert_eq!(
+        spec["components"]["securitySchemes"]["session"]["in"],
+        "cookie"
+    );
+    // DTO schemas are present.
+    assert!(spec["components"]["schemas"]["MeDto"].is_object());
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn swagger_ui_is_served(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let resp = app.oneshot(get("/swagger-ui/", None)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
