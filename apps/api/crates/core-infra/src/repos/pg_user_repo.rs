@@ -24,11 +24,13 @@ const COLS: &str =
 #[async_trait]
 impl UserRepo for PgUserRepo {
     async fn find_by_id(&self, id: UserId) -> RepoResult<Option<User>> {
-        let row = sqlx::query(sqlx::AssertSqlSafe(format!("select {COLS} from users where id = $1")))
-            .bind(id.as_uuid())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_sqlx)?;
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "select {COLS} from users where id = $1"
+        )))
+        .bind(id.as_uuid())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
         row.as_ref().map(user_from_row).transpose()
     }
 

@@ -31,7 +31,12 @@ impl ApiKeyService {
         clock: Arc<dyn Clock>,
         auditor: Auditor,
     ) -> Self {
-        Self { keys, tokens, clock, auditor }
+        Self {
+            keys,
+            tokens,
+            clock,
+            auditor,
+        }
     }
 
     pub async fn list(&self, ctx: &ActorContext) -> Result<Vec<ApiKey>, AppError> {
@@ -71,7 +76,11 @@ impl ApiKeyService {
         };
         self.keys.insert(&key).await?;
 
-        let scope_list = scopes.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
+        let scope_list = scopes
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
         self.auditor
             .record(
                 ctx,
@@ -83,15 +92,16 @@ impl ApiKeyService {
             )
             .await?;
 
-        Ok(CreatedKey { key, token: token.full })
+        Ok(CreatedKey {
+            key,
+            token: token.full,
+        })
     }
 
     pub async fn revoke(&self, ctx: &ActorContext, id: ApiKeyId) -> Result<(), AppError> {
         ctx.require("keys.manage")?;
 
-        let key = self
-            .find_in_org(ctx.actor.org_id, id)
-            .await?;
+        let key = self.find_in_org(ctx.actor.org_id, id).await?;
         self.keys.set_status(id, ApiKeyStatus::Revoked).await?;
 
         self.auditor

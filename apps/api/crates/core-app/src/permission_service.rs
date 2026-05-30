@@ -24,7 +24,11 @@ impl PermissionService {
         roles: Arc<dyn RoleRepo>,
         auditor: Auditor,
     ) -> Self {
-        Self { permissions, roles, auditor }
+        Self {
+            permissions,
+            roles,
+            auditor,
+        }
     }
 
     pub async fn get_matrix(&self, ctx: &ActorContext) -> Result<PermissionMatrix, AppError> {
@@ -49,7 +53,9 @@ impl PermissionService {
             .ok_or_else(|| DomainError::NotFound(format!("role {role_id}")))?;
 
         let mut matrix = self.permissions.load_matrix(ctx.actor.org_id).await?;
-        let before = matrix.raw_state(action_key, role_id).unwrap_or(PermissionState::Deny);
+        let before = matrix
+            .raw_state(action_key, role_id)
+            .unwrap_or(PermissionState::Deny);
 
         // Pure rule: enforces lock + cycles in the loaded matrix.
         let cell = matrix_rules::apply_click(&mut matrix, action_key, role_id, &role.key)?;

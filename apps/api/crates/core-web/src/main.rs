@@ -12,18 +12,28 @@ use tracing_subscriber::EnvFilter;
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,core_web=debug".into()))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,core_web=debug".into()),
+        )
         .init();
 
     let database_url = std::env::var("DATABASE_URL").context("DATABASE_URL must be set")?;
-    let pool = connect(&database_url, 10).await.context("connecting to Postgres")?;
+    let pool = connect(&database_url, 10)
+        .await
+        .context("connecting to Postgres")?;
     migrate(&pool).await.context("running migrations")?;
 
     if env_flag("SEED_OWNER", true) {
         let cfg = seed_config();
         let hasher = Argon2Hasher;
-        if ensure_seeded(&pool, &hasher, &cfg).await.context("seeding")? {
-            tracing::info!("seeded default organization and owner <{}>", cfg.owner_email);
+        if ensure_seeded(&pool, &hasher, &cfg)
+            .await
+            .context("seeding")?
+        {
+            tracing::info!(
+                "seeded default organization and owner <{}>",
+                cfg.owner_email
+            );
         }
     }
 
@@ -36,7 +46,9 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState::new(pool, cfg, default_org);
     let app = build_router(state);
 
-    let listener = TcpListener::bind(&bind).await.with_context(|| format!("binding {bind}"))?;
+    let listener = TcpListener::bind(&bind)
+        .await
+        .with_context(|| format!("binding {bind}"))?;
     tracing::info!("core-web listening on http://{bind}");
     axum::serve(listener, app).await.context("server error")?;
     Ok(())

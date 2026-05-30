@@ -141,7 +141,10 @@ impl PermissionMatrix {
     }
 
     fn rank_of(&self, role: RoleId) -> Option<i16> {
-        self.roles.iter().find(|(id, _)| *id == role).map(|(_, r)| *r)
+        self.roles
+            .iter()
+            .find(|(id, _)| *id == role)
+            .map(|(_, r)| *r)
     }
 
     /// The **effective** state for `(action, role)` after applying downward

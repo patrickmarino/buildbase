@@ -42,7 +42,9 @@ async fn app_with_seed(pool: PgPool) -> axum::Router {
 }
 
 async fn body_json(resp: axum::response::Response) -> Value {
-    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
     serde_json::from_slice(&bytes).unwrap_or(Value::Null)
 }
 
@@ -91,7 +93,10 @@ async fn login(app: &axum::Router) -> String {
 #[sqlx::test(migrations = "../../migrations")]
 async fn unauthenticated_request_is_401(pool: PgPool) {
     let app = app_with_seed(pool).await;
-    let resp = app.oneshot(get("/api/permissions/matrix", None)).await.unwrap();
+    let resp = app
+        .oneshot(get("/api/permissions/matrix", None))
+        .await
+        .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -114,13 +119,20 @@ async fn login_wrong_password_is_401(pool: PgPool) {
 async fn login_then_me_returns_permissions(pool: PgPool) {
     let app = app_with_seed(pool).await;
     let cookie = login(&app).await;
-    let resp = app.clone().oneshot(get("/api/auth/me", Some(&cookie))).await.unwrap();
+    let resp = app
+        .clone()
+        .oneshot(get("/api/auth/me", Some(&cookie)))
+        .await
+        .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let me = body_json(resp).await;
     assert_eq!(me["user"]["email"], "elena@madespace.co");
     assert_eq!(me["user"]["roleKey"], "owner");
     let perms = me["permissions"].as_array().unwrap();
-    assert!(perms.iter().any(|p| p == "org.delete"), "owner can delete org");
+    assert!(
+        perms.iter().any(|p| p == "org.delete"),
+        "owner can delete org"
+    );
 }
 
 #[sqlx::test(migrations = "../../migrations")]
@@ -129,7 +141,13 @@ async fn cycle_cell_then_audit_records_it(pool: PgPool) {
     let cookie = login(&app).await;
 
     // load matrix to find the admin column role id
-    let matrix = body_json(app.clone().oneshot(get("/api/permissions/matrix", Some(&cookie))).await.unwrap()).await;
+    let matrix = body_json(
+        app.clone()
+            .oneshot(get("/api/permissions/matrix", Some(&cookie)))
+            .await
+            .unwrap(),
+    )
+    .await;
     let admin_id = matrix["columns"]
         .as_array()
         .unwrap()
@@ -156,17 +174,45 @@ async fn cycle_cell_then_audit_records_it(pool: PgPool) {
     assert_eq!(cell["state"], "scope");
 
     // the audit log now contains a permission.edit event
-    let audit = body_json(app.clone().oneshot(get("/api/audit", Some(&cookie))).await.unwrap()).await;
-    let actions: Vec<&str> = audit.as_array().unwrap().iter().map(|e| e["action"].as_str().unwrap()).collect();
-    assert!(actions.contains(&"permission.edit"), "audit recorded the edit: {actions:?}");
+    let audit = body_json(
+        app.clone()
+            .oneshot(get("/api/audit", Some(&cookie)))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let actions: Vec<&str> = audit
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["action"].as_str().unwrap())
+        .collect();
+    assert!(
+        actions.contains(&"permission.edit"),
+        "audit recorded the edit: {actions:?}"
+    );
 }
 
 #[sqlx::test(migrations = "../../migrations")]
 async fn locked_cell_is_rejected_409(pool: PgPool) {
     let app = app_with_seed(pool).await;
     let cookie = login(&app).await;
-    let matrix = body_json(app.clone().oneshot(get("/api/permissions/matrix", Some(&cookie))).await.unwrap()).await;
-    let admin_id = matrix["columns"].as_array().unwrap().iter().find(|r| r["key"] == "admin").unwrap()["id"].as_str().unwrap().to_string();
+    let matrix = body_json(
+        app.clone()
+            .oneshot(get("/api/permissions/matrix", Some(&cookie)))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let admin_id = matrix["columns"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["key"] == "admin")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     // org.delete is owner-only → locked for admin
     let resp = app
@@ -224,6 +270,11 @@ async fn invite_user_appears_in_listing(pool: PgPool) {
     assert_eq!(invited["roleKey"], "member");
 
     let users = body_json(app.oneshot(get("/api/users", Some(&cookie))).await.unwrap()).await;
-    let emails: Vec<&str> = users.as_array().unwrap().iter().map(|u| u["email"].as_str().unwrap()).collect();
+    let emails: Vec<&str> = users
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|u| u["email"].as_str().unwrap())
+        .collect();
     assert!(emails.contains(&"aoife@madespace.co"));
 }

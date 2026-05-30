@@ -16,7 +16,11 @@ pub struct WebError {
 
 impl WebError {
     pub fn new(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
-        Self { status, code, message: message.into() }
+        Self {
+            status,
+            code,
+            message: message.into(),
+        }
     }
     pub fn unauthorized() -> Self {
         Self::new(StatusCode::UNAUTHORIZED, "unauthorized", "not signed in")
@@ -61,7 +65,11 @@ fn domain_to_web(d: DomainError) -> WebError {
     } else {
         d.to_string()
     };
-    WebError { status, code, message }
+    WebError {
+        status,
+        code,
+        message,
+    }
 }
 
 pub type WebResult<T> = Result<T, WebError>;

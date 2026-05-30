@@ -45,9 +45,7 @@ impl AuditRepo for PgAuditRepo {
     }
 
     async fn search(&self, org: OrgId, query: &AuditQuery) -> RepoResult<Vec<AuditEvent>> {
-        let mut qb = QueryBuilder::new(format!(
-            "select {COLS} from audit_events where org_id = "
-        ));
+        let mut qb = QueryBuilder::new(format!("select {COLS} from audit_events where org_id = "));
         qb.push_bind(org.as_uuid());
         if let Some(cat) = query.category {
             qb.push(" and category = ").push_bind(cat.as_str());

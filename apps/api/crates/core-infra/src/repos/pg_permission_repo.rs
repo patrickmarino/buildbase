@@ -49,7 +49,11 @@ impl PermissionRepo for PgPermissionRepo {
             .iter()
             .map(|r| {
                 let (action_key, role_id, state) = cell_state_from_row(r)?;
-                Ok(MatrixCell { action_key, role_id, state })
+                Ok(MatrixCell {
+                    action_key,
+                    role_id,
+                    state,
+                })
             })
             .collect::<RepoResult<Vec<_>>>()?;
 

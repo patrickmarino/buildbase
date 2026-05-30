@@ -2,11 +2,11 @@
 //! remain object-safe and can be stored as `Arc<dyn ...Repo>` in the app layer.
 
 use super::RepoResult;
+use crate::entities::email::Email;
 use crate::entities::{
     ApiKey, ApiKeyStatus, AuditEvent, Organization, PermissionMatrix, PermissionState, Role,
     Session, User, UserStatus,
 };
-use crate::entities::email::Email;
 use crate::ids::{ApiKeyId, OrgId, RoleId, SessionId, UserId};
 use async_trait::async_trait;
 

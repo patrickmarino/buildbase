@@ -34,13 +34,12 @@ impl SessionRepo for PgSessionRepo {
     }
 
     async fn get(&self, id: &SessionId) -> RepoResult<Option<Session>> {
-        let row = sqlx::query(
-            "select id, user_id, created_at, expires_at from sessions where id = $1",
-        )
-        .bind(id.as_str())
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(map_sqlx)?;
+        let row =
+            sqlx::query("select id, user_id, created_at, expires_at from sessions where id = $1")
+                .bind(id.as_str())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(map_sqlx)?;
         row.as_ref().map(session_from_row).transpose()
     }
 

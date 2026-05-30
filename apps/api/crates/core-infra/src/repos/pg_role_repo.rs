@@ -22,11 +22,13 @@ const COLS: &str = "id, org_id, key, name, builtin, is_column, base_role_id, ran
 #[async_trait]
 impl RoleRepo for PgRoleRepo {
     async fn find_by_id(&self, id: RoleId) -> RepoResult<Option<Role>> {
-        let row = sqlx::query(sqlx::AssertSqlSafe(format!("select {COLS} from roles where id = $1")))
-            .bind(id.as_uuid())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_sqlx)?;
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "select {COLS} from roles where id = $1"
+        )))
+        .bind(id.as_uuid())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
         row.as_ref().map(role_from_row).transpose()
     }
 

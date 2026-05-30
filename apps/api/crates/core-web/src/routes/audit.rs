@@ -51,7 +51,10 @@ pub async fn export(
     let csv = state.audit.export_csv(&ctx, to_query(&q)).await?;
     let headers = [
         (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
-        (header::CONTENT_DISPOSITION, "attachment; filename=\"audit-log.csv\""),
+        (
+            header::CONTENT_DISPOSITION,
+            "attachment; filename=\"audit-log.csv\"",
+        ),
     ];
     Ok((headers, csv))
 }

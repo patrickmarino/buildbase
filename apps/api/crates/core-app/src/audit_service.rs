@@ -54,7 +54,12 @@ impl AuditService {
                 e.after.clone().unwrap_or_default(),
                 e.ip.clone().unwrap_or_default(),
             ];
-            out.push_str(&row.iter().map(|f| csv_field(f)).collect::<Vec<_>>().join(","));
+            out.push_str(
+                &row.iter()
+                    .map(|f| csv_field(f))
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
             out.push('\n');
         }
         Ok(out)

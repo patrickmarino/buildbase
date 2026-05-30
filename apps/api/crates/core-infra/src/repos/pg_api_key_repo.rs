@@ -17,8 +17,7 @@ impl PgApiKeyRepo {
     }
 }
 
-const COLS: &str =
-    "id, org_id, name, prefix, token_hash, scopes, status, created_at, last_used_at";
+const COLS: &str = "id, org_id, name, prefix, token_hash, scopes, status, created_at, last_used_at";
 
 #[async_trait]
 impl ApiKeyRepo for PgApiKeyRepo {
@@ -34,11 +33,13 @@ impl ApiKeyRepo for PgApiKeyRepo {
     }
 
     async fn find_by_id(&self, id: ApiKeyId) -> RepoResult<Option<ApiKey>> {
-        let row = sqlx::query(sqlx::AssertSqlSafe(format!("select {COLS} from api_keys where id = $1")))
-            .bind(id.as_uuid())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_sqlx)?;
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "select {COLS} from api_keys where id = $1"
+        )))
+        .bind(id.as_uuid())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
         row.as_ref().map(api_key_from_row).transpose()
     }
 

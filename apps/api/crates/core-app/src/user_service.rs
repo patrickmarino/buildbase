@@ -37,10 +37,20 @@ impl UserService {
         auditor: Auditor,
         clock: Arc<dyn core_domain::ports::Clock>,
     ) -> Self {
-        Self { users, roles, sessions, auditor, clock }
+        Self {
+            users,
+            roles,
+            sessions,
+            auditor,
+            clock,
+        }
     }
 
-    pub async fn list(&self, ctx: &ActorContext, filter: UserFilter) -> Result<Vec<User>, AppError> {
+    pub async fn list(
+        &self,
+        ctx: &ActorContext,
+        filter: UserFilter,
+    ) -> Result<Vec<User>, AppError> {
         ctx.require("users.view")?;
         Ok(self.users.list(ctx.actor.org_id, &filter).await?)
     }
@@ -56,11 +66,22 @@ impl UserService {
         ctx.require("users.invite")?;
 
         let email = Email::parse(email)?;
-        if self.users.find_by_email(ctx.actor.org_id, &email).await?.is_some() {
-            return Err(DomainError::Conflict("a user with that email already exists".into()).into());
+        if self
+            .users
+            .find_by_email(ctx.actor.org_id, &email)
+            .await?
+            .is_some()
+        {
+            return Err(
+                DomainError::Conflict("a user with that email already exists".into()).into(),
+            );
         }
 
-        let role_key = if role_key.is_empty() { "member" } else { role_key };
+        let role_key = if role_key.is_empty() {
+            "member"
+        } else {
+            role_key
+        };
         let role = self.role_by_key(ctx, role_key).await?;
         // Cannot invite someone at a role above your own.
         role_guards::check_no_privilege_escalation(&ctx.actor_role, &role)?;
@@ -87,7 +108,11 @@ impl UserService {
                 PermissionCategory::Users,
                 Some(user.email.to_string()),
                 Some("—".into()),
-                Some(format!("{} · {}", role.name, scope.unwrap_or_else(|| "—".into()))),
+                Some(format!(
+                    "{} · {}",
+                    role.name,
+                    scope.unwrap_or_else(|| "—".into())
+                )),
             )
             .await?;
         Ok(user)

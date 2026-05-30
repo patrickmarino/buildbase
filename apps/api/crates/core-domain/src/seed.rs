@@ -4,9 +4,7 @@
 //! seeding: both the infrastructure startup seed and the in-memory test fakes
 //! build from it, so the two never drift.
 
-use crate::entities::permission::{
-    Action, PermissionCategory, PermissionGroup, PermissionState,
-};
+use crate::entities::permission::{Action, PermissionCategory, PermissionGroup, PermissionState};
 use crate::entities::role::BuiltinRole;
 
 use PermissionState::{Allow as A, Deny as D, Scope as S};
@@ -98,7 +96,9 @@ pub fn default_cells() -> Vec<(&'static str, &'static str, PermissionState)> {
 #[must_use]
 pub fn default_state(action_key: &str, role: BuiltinRole) -> Option<PermissionState> {
     let idx = COLUMN_ROLES.iter().position(|&r| r == role)?;
-    ROWS.iter().find(|r| r.key == action_key).map(|r| r.states[idx])
+    ROWS.iter()
+        .find(|r| r.key == action_key)
+        .map(|r| r.states[idx])
 }
 
 /// Default organization settings (branding accent, MFA, password policy, SSO),
@@ -127,14 +127,20 @@ mod tests {
     #[test]
     fn owner_allows_everything() {
         for row in ROWS {
-            assert_eq!(default_state(row.key, BuiltinRole::Owner), Some(PermissionState::Allow));
+            assert_eq!(
+                default_state(row.key, BuiltinRole::Owner),
+                Some(PermissionState::Allow)
+            );
         }
     }
 
     #[test]
     fn owner_only_actions_deny_admin() {
         for key in crate::services::matrix_rules::OWNER_ONLY_ACTIONS {
-            assert_eq!(default_state(key, BuiltinRole::Admin), Some(PermissionState::Deny));
+            assert_eq!(
+                default_state(key, BuiltinRole::Admin),
+                Some(PermissionState::Deny)
+            );
         }
     }
 }

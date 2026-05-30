@@ -13,7 +13,8 @@ pub use api_key::{ApiKey, ApiKeyStatus, Scope};
 pub use audit::AuditEvent;
 pub use email::Email;
 pub use organization::{
-    Branding, MfaConfig, MfaEnforce, MfaMethod, Organization, PasswordPolicy, SsoConfig, SsoProvider,
+    Branding, MfaConfig, MfaEnforce, MfaMethod, Organization, PasswordPolicy, SsoConfig,
+    SsoProvider,
 };
 pub use permission::{
     Action, MatrixCell, PermissionCategory, PermissionGroup, PermissionMatrix, PermissionState,

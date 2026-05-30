@@ -3,7 +3,11 @@
 //! use-case tests so they run with no database.
 
 // Test scaffolding: a few ergonomic shortcuts are fine here.
-#![allow(clippy::unwrap_used, clippy::too_many_arguments, clippy::unnecessary_sort_by)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::too_many_arguments,
+    clippy::unnecessary_sort_by
+)]
 
 use crate::audit::Auditor;
 use crate::ctx::ActorContext;
@@ -41,8 +45,11 @@ pub struct Store {
 impl Store {
     fn column_roles_sorted(&self) -> Vec<(RoleId, i16)> {
         let roles = self.roles.lock().unwrap();
-        let mut cols: Vec<(RoleId, i16)> =
-            roles.values().filter(|r| r.is_column).map(|r| (r.id, r.rank)).collect();
+        let mut cols: Vec<(RoleId, i16)> = roles
+            .values()
+            .filter(|r| r.is_column)
+            .map(|r| (r.id, r.rank))
+            .collect();
         cols.sort_by(|a, b| b.1.cmp(&a.1));
         cols
     }
@@ -182,11 +189,13 @@ impl PermissionRepo for PermissionRepoFake {
             .lock()
             .unwrap()
             .iter()
-            .map(|((action, role), state)| core_domain::entities::MatrixCell {
-                action_key: action.clone(),
-                role_id: *role,
-                state: *state,
-            })
+            .map(
+                |((action, role), state)| core_domain::entities::MatrixCell {
+                    action_key: action.clone(),
+                    role_id: *role,
+                    state: *state,
+                },
+            )
             .collect();
         Ok(PermissionMatrix {
             groups: seed::default_groups(),
@@ -288,9 +297,14 @@ impl AuditRepo for AuditRepoFake {
             .filter(|e| query.category.is_none_or(|c| e.category == c))
             .filter(|e| {
                 q.as_ref().is_none_or(|q| {
-                    format!("{} {} {}", e.actor_name, e.action, e.target.clone().unwrap_or_default())
-                        .to_lowercase()
-                        .contains(q)
+                    format!(
+                        "{} {} {}",
+                        e.actor_name,
+                        e.action,
+                        e.target.clone().unwrap_or_default()
+                    )
+                    .to_lowercase()
+                    .contains(q)
                 })
             })
             .cloned()
@@ -459,9 +473,36 @@ impl World {
         }
 
         // Users
-        let owner_id = Self::insert_user(&store, org_id, "elena@madespace.co", "Elena Marchetti", roles_by_key["owner"], UserStatus::Active, Some("hashed::ownerpw"), now);
-        let admin_id = Self::insert_user(&store, org_id, "tomas@madespace.co", "Tomas Reinholt", roles_by_key["admin"], UserStatus::Active, Some("hashed::adminpw"), now);
-        let member_id = Self::insert_user(&store, org_id, "daniel@madespace.co", "Daniel Fischer", roles_by_key["member"], UserStatus::Active, Some("hashed::memberpw"), now);
+        let owner_id = Self::insert_user(
+            &store,
+            org_id,
+            "elena@madespace.co",
+            "Elena Marchetti",
+            roles_by_key["owner"],
+            UserStatus::Active,
+            Some("hashed::ownerpw"),
+            now,
+        );
+        let admin_id = Self::insert_user(
+            &store,
+            org_id,
+            "tomas@madespace.co",
+            "Tomas Reinholt",
+            roles_by_key["admin"],
+            UserStatus::Active,
+            Some("hashed::adminpw"),
+            now,
+        );
+        let member_id = Self::insert_user(
+            &store,
+            org_id,
+            "daniel@madespace.co",
+            "Daniel Fischer",
+            roles_by_key["member"],
+            UserStatus::Active,
+            Some("hashed::memberpw"),
+            now,
+        );
 
         // Org
         *store.org.lock().unwrap() = Some(Organization {
@@ -470,10 +511,20 @@ impl World {
             domain: Some("madespace.co".into()),
             owner_id,
             pending_owner_id: None,
-            branding: Branding { accent_color: seed::default_branding_accent().into() },
-            mfa: MfaConfig { enabled: true, method: MfaMethod::Totp, enforce: MfaEnforce::Admins },
+            branding: Branding {
+                accent_color: seed::default_branding_accent().into(),
+            },
+            mfa: MfaConfig {
+                enabled: true,
+                method: MfaMethod::Totp,
+                enforce: MfaEnforce::Admins,
+            },
             password_policy: PasswordPolicy::default(),
-            sso: SsoConfig { enabled: false, provider: SsoProvider::Saml, url: None },
+            sso: SsoConfig {
+                enabled: false,
+                provider: SsoProvider::Saml,
+                url: None,
+            },
         });
 
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
@@ -523,20 +574,49 @@ impl World {
     }
 
     // Repo view constructors
-    pub fn users_repo(&self) -> Arc<dyn UserRepo> { Arc::new(UserRepoFake(self.store.clone())) }
-    pub fn roles_repo(&self) -> Arc<dyn RoleRepo> { Arc::new(RoleRepoFake(self.store.clone())) }
-    pub fn perms_repo(&self) -> Arc<dyn PermissionRepo> { Arc::new(PermissionRepoFake(self.store.clone())) }
-    pub fn org_repo(&self) -> Arc<dyn OrgRepo> { Arc::new(OrgRepoFake(self.store.clone())) }
-    pub fn keys_repo(&self) -> Arc<dyn ApiKeyRepo> { Arc::new(ApiKeyRepoFake(self.store.clone())) }
-    pub fn sessions_repo(&self) -> Arc<dyn SessionRepo> { Arc::new(SessionRepoFake(self.store.clone())) }
-    pub fn audit_repo(&self) -> Arc<dyn AuditRepo> { Arc::new(AuditRepoFake(self.store.clone())) }
+    pub fn users_repo(&self) -> Arc<dyn UserRepo> {
+        Arc::new(UserRepoFake(self.store.clone()))
+    }
+    pub fn roles_repo(&self) -> Arc<dyn RoleRepo> {
+        Arc::new(RoleRepoFake(self.store.clone()))
+    }
+    pub fn perms_repo(&self) -> Arc<dyn PermissionRepo> {
+        Arc::new(PermissionRepoFake(self.store.clone()))
+    }
+    pub fn org_repo(&self) -> Arc<dyn OrgRepo> {
+        Arc::new(OrgRepoFake(self.store.clone()))
+    }
+    pub fn keys_repo(&self) -> Arc<dyn ApiKeyRepo> {
+        Arc::new(ApiKeyRepoFake(self.store.clone()))
+    }
+    pub fn sessions_repo(&self) -> Arc<dyn SessionRepo> {
+        Arc::new(SessionRepoFake(self.store.clone()))
+    }
+    pub fn audit_repo(&self) -> Arc<dyn AuditRepo> {
+        Arc::new(AuditRepoFake(self.store.clone()))
+    }
 
     /// Build an [`ActorContext`] for a user, loading their role + the matrix.
     pub async fn ctx_for(&self, user_id: UserId) -> ActorContext {
-        let actor = self.users_repo().find_by_id(user_id).await.unwrap().unwrap();
-        let actor_role = self.roles_repo().find_by_id(actor.role_id).await.unwrap().unwrap();
+        let actor = self
+            .users_repo()
+            .find_by_id(user_id)
+            .await
+            .unwrap()
+            .unwrap();
+        let actor_role = self
+            .roles_repo()
+            .find_by_id(actor.role_id)
+            .await
+            .unwrap()
+            .unwrap();
         let matrix = self.perms_repo().load_matrix(self.org_id).await.unwrap();
-        ActorContext { actor, actor_role, matrix, ip: Some("203.0.113.7".into()) }
+        ActorContext {
+            actor,
+            actor_role,
+            matrix,
+            ip: Some("203.0.113.7".into()),
+        }
     }
 
     /// Number of audit events recorded so far.
@@ -544,7 +624,12 @@ impl World {
         self.store.audit.lock().unwrap().len()
     }
     pub fn last_audit_action(&self) -> Option<String> {
-        self.store.audit.lock().unwrap().last().map(|e| e.action.clone())
+        self.store
+            .audit
+            .lock()
+            .unwrap()
+            .last()
+            .map(|e| e.action.clone())
     }
     pub fn session_count(&self) -> usize {
         self.store.sessions.lock().unwrap().len()

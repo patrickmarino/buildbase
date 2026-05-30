@@ -59,9 +59,7 @@ pub fn can(input: &AuthzInput, action: &str) -> Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::permission::{
-        Action, MatrixCell, PermissionCategory, PermissionGroup,
-    };
+    use crate::entities::permission::{Action, MatrixCell, PermissionCategory, PermissionGroup};
 
     fn rid(n: u128) -> RoleId {
         RoleId::from_uuid(uuid::Uuid::from_u128(n))
@@ -87,27 +85,46 @@ mod tests {
     }
 
     fn cell(action: &str, role: RoleId, state: PermissionState) -> MatrixCell {
-        MatrixCell { action_key: action.into(), role_id: role, state }
+        MatrixCell {
+            action_key: action.into(),
+            role_id: role,
+            state,
+        }
     }
 
     #[test]
     fn deny_by_default_for_unknown_action() {
         let m = matrix(vec![]);
-        let input = AuthzInput { actor_role: rid(2), matrix: &m, actor_id: uid(99), resource_owner: None };
+        let input = AuthzInput {
+            actor_role: rid(2),
+            matrix: &m,
+            actor_id: uid(99),
+            resource_owner: None,
+        };
         assert_eq!(can(&input, "nonexistent"), Decision::Deny);
     }
 
     #[test]
     fn allow_when_cell_allows() {
         let m = matrix(vec![cell("users.invite", rid(2), PermissionState::Allow)]);
-        let input = AuthzInput { actor_role: rid(2), matrix: &m, actor_id: uid(99), resource_owner: None };
+        let input = AuthzInput {
+            actor_role: rid(2),
+            matrix: &m,
+            actor_id: uid(99),
+            resource_owner: None,
+        };
         assert_eq!(can(&input, "users.invite"), Decision::Allow);
     }
 
     #[test]
     fn deny_when_cell_denies() {
         let m = matrix(vec![cell("users.invite", rid(3), PermissionState::Deny)]);
-        let input = AuthzInput { actor_role: rid(3), matrix: &m, actor_id: uid(99), resource_owner: None };
+        let input = AuthzInput {
+            actor_role: rid(3),
+            matrix: &m,
+            actor_id: uid(99),
+            resource_owner: None,
+        };
         assert_eq!(can(&input, "users.invite"), Decision::Deny);
     }
 
@@ -116,13 +133,28 @@ mod tests {
         let m = matrix(vec![cell("users.invite", rid(3), PermissionState::Scope)]);
         let me = uid(7);
         // acting on my own resource → allow
-        let mine = AuthzInput { actor_role: rid(3), matrix: &m, actor_id: me, resource_owner: Some(me) };
+        let mine = AuthzInput {
+            actor_role: rid(3),
+            matrix: &m,
+            actor_id: me,
+            resource_owner: Some(me),
+        };
         assert_eq!(can(&mine, "users.invite"), Decision::Allow);
         // acting on someone else's → deny
-        let other = AuthzInput { actor_role: rid(3), matrix: &m, actor_id: me, resource_owner: Some(uid(8)) };
+        let other = AuthzInput {
+            actor_role: rid(3),
+            matrix: &m,
+            actor_id: me,
+            resource_owner: Some(uid(8)),
+        };
         assert_eq!(can(&other, "users.invite"), Decision::Deny);
         // collection-level (no owner) → deny
-        let none = AuthzInput { actor_role: rid(3), matrix: &m, actor_id: me, resource_owner: None };
+        let none = AuthzInput {
+            actor_role: rid(3),
+            matrix: &m,
+            actor_id: me,
+            resource_owner: None,
+        };
         assert_eq!(can(&none, "users.invite"), Decision::Deny);
     }
 
@@ -130,10 +162,20 @@ mod tests {
     fn higher_role_inherits_lower_allow() {
         // admin allows; owner has no explicit cell but should inherit allow.
         let m = matrix(vec![cell("users.invite", rid(2), PermissionState::Allow)]);
-        let owner = AuthzInput { actor_role: rid(1), matrix: &m, actor_id: uid(1), resource_owner: None };
+        let owner = AuthzInput {
+            actor_role: rid(1),
+            matrix: &m,
+            actor_id: uid(1),
+            resource_owner: None,
+        };
         assert_eq!(can(&owner, "users.invite"), Decision::Allow);
         // member (below admin) does NOT inherit upward.
-        let member = AuthzInput { actor_role: rid(3), matrix: &m, actor_id: uid(3), resource_owner: None };
+        let member = AuthzInput {
+            actor_role: rid(3),
+            matrix: &m,
+            actor_id: uid(3),
+            resource_owner: None,
+        };
         assert_eq!(can(&member, "users.invite"), Decision::Deny);
     }
 
@@ -146,7 +188,12 @@ mod tests {
             cell("users.invite", rid(2), PermissionState::Deny),
         ]);
         let me = uid(1);
-        let owner = AuthzInput { actor_role: rid(1), matrix: &m, actor_id: me, resource_owner: Some(me) };
+        let owner = AuthzInput {
+            actor_role: rid(1),
+            matrix: &m,
+            actor_id: me,
+            resource_owner: Some(me),
+        };
         assert_eq!(can(&owner, "users.invite"), Decision::Allow);
     }
 }

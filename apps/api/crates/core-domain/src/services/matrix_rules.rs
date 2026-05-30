@@ -85,9 +85,21 @@ mod tests {
             }],
         }];
         let cells = vec![
-            MatrixCell { action_key: "users.invite".into(), role_id: owner, state: PermissionState::Allow },
-            MatrixCell { action_key: "users.invite".into(), role_id: admin, state: PermissionState::Allow },
-            MatrixCell { action_key: "org.delete".into(), role_id: admin, state: PermissionState::Deny },
+            MatrixCell {
+                action_key: "users.invite".into(),
+                role_id: owner,
+                state: PermissionState::Allow,
+            },
+            MatrixCell {
+                action_key: "users.invite".into(),
+                role_id: admin,
+                state: PermissionState::Allow,
+            },
+            MatrixCell {
+                action_key: "org.delete".into(),
+                role_id: admin,
+                state: PermissionState::Deny,
+            },
         ];
         let matrix = PermissionMatrix {
             groups,
@@ -107,7 +119,10 @@ mod tests {
     #[test]
     fn owner_column_is_locked() {
         assert!(is_locked("users.invite", "owner"));
-        assert_eq!(lock_reason("users.invite", "owner"), Some("Owner has full control by definition."));
+        assert_eq!(
+            lock_reason("users.invite", "owner"),
+            Some("Owner has full control by definition.")
+        );
     }
 
     #[test]
@@ -115,7 +130,10 @@ mod tests {
         assert!(is_locked("roles.owner", "admin"));
         assert!(is_locked("org.transfer", "admin"));
         assert!(is_locked("org.delete", "manager"));
-        assert_eq!(lock_reason("roles.owner", "admin"), Some("Only the Owner may grant ownership."));
+        assert_eq!(
+            lock_reason("roles.owner", "admin"),
+            Some("Only the Owner may grant ownership.")
+        );
     }
 
     #[test]
@@ -130,7 +148,10 @@ mod tests {
         let cell = apply_click(&mut m, "users.invite", admin, "admin").unwrap();
         assert_eq!(cell.state, PermissionState::Scope);
         // persisted in the matrix
-        assert_eq!(m.raw_state("users.invite", admin), Some(PermissionState::Scope));
+        assert_eq!(
+            m.raw_state("users.invite", admin),
+            Some(PermissionState::Scope)
+        );
     }
 
     #[test]
@@ -139,7 +160,10 @@ mod tests {
         let err = apply_click(&mut m, "users.invite", owner, "owner").unwrap_err();
         assert!(matches!(err, DomainError::CellLocked(_)));
         // unchanged
-        assert_eq!(m.raw_state("users.invite", owner), Some(PermissionState::Allow));
+        assert_eq!(
+            m.raw_state("users.invite", owner),
+            Some(PermissionState::Allow)
+        );
     }
 
     #[test]
@@ -147,7 +171,10 @@ mod tests {
         let (mut m, _owner, admin) = test_matrix();
         let err = apply_click(&mut m, "org.delete", admin, "admin").unwrap_err();
         assert!(matches!(err, DomainError::CellLocked(_)));
-        assert_eq!(m.raw_state("org.delete", admin), Some(PermissionState::Deny));
+        assert_eq!(
+            m.raw_state("org.delete", admin),
+            Some(PermissionState::Deny)
+        );
     }
 
     #[test]

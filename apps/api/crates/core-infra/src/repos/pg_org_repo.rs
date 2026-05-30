@@ -24,11 +24,13 @@ pub(crate) const ORG_COLS: &str = "id, name, domain, owner_id, pending_owner_id,
 #[async_trait]
 impl OrgRepo for PgOrgRepo {
     async fn get(&self, org: OrgId) -> RepoResult<Option<Organization>> {
-        let row = sqlx::query(sqlx::AssertSqlSafe(format!("select {ORG_COLS} from organizations where id = $1")))
-            .bind(org.as_uuid())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(map_sqlx)?;
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "select {ORG_COLS} from organizations where id = $1"
+        )))
+        .bind(org.as_uuid())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
         row.as_ref().map(org_from_row).transpose()
     }
 
@@ -82,12 +84,14 @@ impl OrgRepo for PgOrgRepo {
             .execute(&mut *tx)
             .await
             .map_err(map_sqlx)?;
-        sqlx::query("update organizations set owner_id = $2, pending_owner_id = null where id = $1")
-            .bind(org.as_uuid())
-            .bind(new_owner.as_uuid())
-            .execute(&mut *tx)
-            .await
-            .map_err(map_sqlx)?;
+        sqlx::query(
+            "update organizations set owner_id = $2, pending_owner_id = null where id = $1",
+        )
+        .bind(org.as_uuid())
+        .bind(new_owner.as_uuid())
+        .execute(&mut *tx)
+        .await
+        .map_err(map_sqlx)?;
         tx.commit().await.map_err(map_sqlx)?;
         Ok(())
     }

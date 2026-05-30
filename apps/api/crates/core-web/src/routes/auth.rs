@@ -33,7 +33,10 @@ pub async fn login(
 
 pub async fn logout(State(state): State<AppState>, jar: CookieJar) -> (CookieJar, StatusCode) {
     if let Some(c) = jar.get(&state.cfg.cookie_name) {
-        let _ = state.auth.logout(&SessionId::new(c.value().to_string())).await;
+        let _ = state
+            .auth
+            .logout(&SessionId::new(c.value().to_string()))
+            .await;
     }
     (jar.add(clear_cookie(&state.cfg)), StatusCode::NO_CONTENT)
 }

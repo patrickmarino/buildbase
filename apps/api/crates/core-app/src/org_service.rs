@@ -37,7 +37,12 @@ impl OrgService {
         roles: Arc<dyn RoleRepo>,
         auditor: Auditor,
     ) -> Self {
-        Self { orgs, users, roles, auditor }
+        Self {
+            orgs,
+            users,
+            roles,
+            auditor,
+        }
     }
 
     pub async fn get(&self, ctx: &ActorContext) -> Result<Organization, AppError> {
@@ -60,7 +65,11 @@ impl OrgService {
             org.name = name;
         }
         if let Some(domain) = patch.domain {
-            org.domain = if domain.trim().is_empty() { None } else { Some(domain) };
+            org.domain = if domain.trim().is_empty() {
+                None
+            } else {
+                Some(domain)
+            };
         }
         if let Some(accent) = patch.accent_color {
             org.branding.accent_color = accent;
@@ -129,14 +138,22 @@ impl OrgService {
     pub async fn accept_ownership(&self, ctx: &ActorContext) -> Result<(), AppError> {
         let org = self.load(ctx).await?;
         if org.pending_owner_id != Some(ctx.actor.id) {
-            return Err(DomainError::Forbidden("no pending transfer for you to accept".into()).into());
+            return Err(
+                DomainError::Forbidden("no pending transfer for you to accept".into()).into(),
+            );
         }
 
         let owner_role = self.role_by_key(ctx, "owner").await?;
         let admin_role = self.role_by_key(ctx, "admin").await?;
 
         self.orgs
-            .complete_ownership_transfer(org.id, ctx.actor.id, org.owner_id, owner_role.id, admin_role.id)
+            .complete_ownership_transfer(
+                org.id,
+                ctx.actor.id,
+                org.owner_id,
+                owner_role.id,
+                admin_role.id,
+            )
             .await?;
 
         self.auditor
@@ -179,7 +196,11 @@ impl OrgService {
             .await?
             .ok_or_else(|| DomainError::NotFound("organization".into()).into())
     }
-    async fn role_by_key(&self, ctx: &ActorContext, key: &str) -> Result<core_domain::entities::Role, AppError> {
+    async fn role_by_key(
+        &self,
+        ctx: &ActorContext,
+        key: &str,
+    ) -> Result<core_domain::entities::Role, AppError> {
         self.roles
             .find_by_key(ctx.actor.org_id, key)
             .await?
@@ -193,7 +214,11 @@ fn summarize(org: &Organization) -> String {
         "MFA {} · pw min {} · SSO {}",
         if org.mfa.enabled { "on" } else { "off" },
         org.password_policy.min_length,
-        if org.sso.enabled { org.sso.provider.serialize_str() } else { "off" },
+        if org.sso.enabled {
+            org.sso.provider.serialize_str()
+        } else {
+            "off"
+        },
     )
 }
 

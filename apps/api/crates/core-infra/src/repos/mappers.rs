@@ -26,7 +26,8 @@ pub fn user_from_row(row: &PgRow) -> RepoResult<User> {
         email: Email::parse(&email_s).map_err(|_| decode_err("email", &email_s))?,
         name: row.try_get("name").map_err(into_repo)?,
         role_id: RoleId::from_uuid(row.try_get("role_id").map_err(into_repo)?),
-        status: UserStatus::from_str(&status_s).ok_or_else(|| decode_err("user status", &status_s))?,
+        status: UserStatus::from_str(&status_s)
+            .ok_or_else(|| decode_err("user status", &status_s))?,
         scope: row.try_get("scope").map_err(into_repo)?,
         password_hash: row.try_get("password_hash").map_err(into_repo)?,
         created_at: row.try_get("created_at").map_err(into_repo)?,
@@ -100,7 +101,8 @@ pub fn audit_from_row(row: &PgRow) -> RepoResult<AuditEvent> {
         actor_name: row.try_get("actor_name").map_err(into_repo)?,
         actor_role_key: row.try_get("actor_role_key").map_err(into_repo)?,
         action: row.try_get("action").map_err(into_repo)?,
-        category: PermissionCategory::from_str(&cat_s).ok_or_else(|| decode_err("category", &cat_s))?,
+        category: PermissionCategory::from_str(&cat_s)
+            .ok_or_else(|| decode_err("category", &cat_s))?,
         target: row.try_get("target").map_err(into_repo)?,
         before: row.try_get("before_val").map_err(into_repo)?,
         after: row.try_get("after_val").map_err(into_repo)?,
@@ -125,7 +127,8 @@ pub fn api_key_from_row(row: &PgRow) -> RepoResult<ApiKey> {
         prefix: row.try_get("prefix").map_err(into_repo)?,
         token_hash: row.try_get("token_hash").map_err(into_repo)?,
         scopes,
-        status: ApiKeyStatus::from_str(&status_s).ok_or_else(|| decode_err("key status", &status_s))?,
+        status: ApiKeyStatus::from_str(&status_s)
+            .ok_or_else(|| decode_err("key status", &status_s))?,
         created_at: row.try_get("created_at").map_err(into_repo)?,
         last_used_at: row.try_get("last_used_at").map_err(into_repo)?,
     })
@@ -145,7 +148,8 @@ pub fn cell_state_from_row(row: &PgRow) -> RepoResult<(String, RoleId, Permissio
     Ok((
         row.try_get("action_key").map_err(into_repo)?,
         RoleId::from_uuid(row.try_get("role_id").map_err(into_repo)?),
-        PermissionState::from_str(&state_s).ok_or_else(|| decode_err("permission state", &state_s))?,
+        PermissionState::from_str(&state_s)
+            .ok_or_else(|| decode_err("permission state", &state_s))?,
     ))
 }
 

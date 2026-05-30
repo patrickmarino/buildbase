@@ -34,19 +34,34 @@ async fn seed(pool: &PgPool) -> OrgId {
 #[sqlx::test(migrations = "../../migrations")]
 async fn seed_is_idempotent_and_creates_roles_matrix_owner(pool: PgPool) {
     let hasher = Argon2Hasher;
-    assert!(ensure_seeded(&pool, &hasher, &cfg()).await.unwrap(), "first seed runs");
-    assert!(!ensure_seeded(&pool, &hasher, &cfg()).await.unwrap(), "second seed no-ops");
+    assert!(
+        ensure_seeded(&pool, &hasher, &cfg()).await.unwrap(),
+        "first seed runs"
+    );
+    assert!(
+        !ensure_seeded(&pool, &hasher, &cfg()).await.unwrap(),
+        "second seed no-ops"
+    );
 
     let org = sole_org_id(&pool).await.unwrap().unwrap();
     let roles = PgRoleRepo::new(pool.clone()).list_all(org).await.unwrap();
     assert_eq!(roles.len(), 7, "seven default roles");
 
-    let matrix = PgPermissionRepo::new(pool.clone()).load_matrix(org).await.unwrap();
+    let matrix = PgPermissionRepo::new(pool.clone())
+        .load_matrix(org)
+        .await
+        .unwrap();
     assert_eq!(matrix.roles.len(), 5, "five matrix columns");
     let owner = roles.iter().find(|r| r.key == "owner").unwrap();
     let admin = roles.iter().find(|r| r.key == "admin").unwrap();
-    assert_eq!(matrix.raw_state("users.invite", owner.id), Some(PermissionState::Allow));
-    assert_eq!(matrix.raw_state("org.delete", admin.id), Some(PermissionState::Deny));
+    assert_eq!(
+        matrix.raw_state("users.invite", owner.id),
+        Some(PermissionState::Allow)
+    );
+    assert_eq!(
+        matrix.raw_state("org.delete", admin.id),
+        Some(PermissionState::Deny)
+    );
 }
 
 #[sqlx::test(migrations = "../../migrations")]
@@ -98,7 +113,10 @@ async fn user_insert_update_and_admin_count(pool: PgPool) {
     assert_eq!(users.count_active_admins(org).await.unwrap(), 1);
 
     // duplicate email is rejected
-    let dup = User { id: UserId::new(), ..u.clone() };
+    let dup = User {
+        id: UserId::new(),
+        ..u.clone()
+    };
     assert!(matches!(
         users.insert(&dup).await,
         Err(RepoError::UniqueViolation(_))
@@ -110,12 +128,24 @@ async fn list_users_filters(pool: PgPool) {
     let org = seed(&pool).await;
     let users = PgUserRepo::new(pool.clone());
     let found = users
-        .list(org, &UserFilter { query: Some("elena".into()), ..Default::default() })
+        .list(
+            org,
+            &UserFilter {
+                query: Some("elena".into()),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
     assert_eq!(found.len(), 1);
     let none = users
-        .list(org, &UserFilter { status: Some(UserStatus::Deactivated), ..Default::default() })
+        .list(
+            org,
+            &UserFilter {
+                status: Some(UserStatus::Deactivated),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
     assert!(none.is_empty());
@@ -148,11 +178,21 @@ async fn sessions_create_get_and_revoke_all(pool: PgPool) {
 async fn permission_cell_upsert_roundtrip(pool: PgPool) {
     let org = seed(&pool).await;
     let perms = PgPermissionRepo::new(pool.clone());
-    let admin = PgRoleRepo::new(pool.clone()).find_by_key(org, "admin").await.unwrap().unwrap();
+    let admin = PgRoleRepo::new(pool.clone())
+        .find_by_key(org, "admin")
+        .await
+        .unwrap()
+        .unwrap();
 
-    perms.set_cell(org, "users.invite", admin.id, PermissionState::Scope).await.unwrap();
+    perms
+        .set_cell(org, "users.invite", admin.id, PermissionState::Scope)
+        .await
+        .unwrap();
     let matrix = perms.load_matrix(org).await.unwrap();
-    assert_eq!(matrix.raw_state("users.invite", admin.id), Some(PermissionState::Scope));
+    assert_eq!(
+        matrix.raw_state("users.invite", admin.id),
+        Some(PermissionState::Scope)
+    );
 }
 
 #[sqlx::test(migrations = "../../migrations")]
@@ -184,18 +224,36 @@ async fn audit_append_and_search(pool: PgPool) {
     assert_eq!(all.len(), 1);
     // category filter
     let roles_only = audit
-        .search(org, &AuditQuery { category: Some(PermissionCategory::Roles), ..Default::default() })
+        .search(
+            org,
+            &AuditQuery {
+                category: Some(PermissionCategory::Roles),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
     assert_eq!(roles_only.len(), 1);
     let users_only = audit
-        .search(org, &AuditQuery { category: Some(PermissionCategory::Users), ..Default::default() })
+        .search(
+            org,
+            &AuditQuery {
+                category: Some(PermissionCategory::Users),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
     assert!(users_only.is_empty());
     // text search
     let hit = audit
-        .search(org, &AuditQuery { query: Some("invite".into()), ..Default::default() })
+        .search(
+            org,
+            &AuditQuery {
+                query: Some("invite".into()),
+                ..Default::default()
+            },
+        )
         .await
         .unwrap();
     assert_eq!(hit.len(), 1);
@@ -223,7 +281,9 @@ async fn api_keys_insert_list_revoke(pool: PgPool) {
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].scopes, vec![Scope::UsersView, Scope::AuditView]);
 
-    keys.set_status(key.id, ApiKeyStatus::Revoked).await.unwrap();
+    keys.set_status(key.id, ApiKeyStatus::Revoked)
+        .await
+        .unwrap();
     let after = keys.find_by_id(key.id).await.unwrap().unwrap();
     assert_eq!(after.status, ApiKeyStatus::Revoked);
 }
@@ -237,7 +297,11 @@ async fn ownership_transfer_swaps_roles(pool: PgPool) {
     let owner_role = roles.find_by_key(org, "owner").await.unwrap().unwrap();
     let admin_role = roles.find_by_key(org, "admin").await.unwrap().unwrap();
 
-    let owner = users.find_by_email(org, &Email::parse("elena@madespace.co").unwrap()).await.unwrap().unwrap();
+    let owner = users
+        .find_by_email(org, &Email::parse("elena@madespace.co").unwrap())
+        .await
+        .unwrap()
+        .unwrap();
 
     // add an admin to receive ownership
     let now = OffsetDateTime::now_utc();

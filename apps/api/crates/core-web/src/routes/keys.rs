@@ -27,7 +27,9 @@ pub async fn create(
     let scopes: Vec<Scope> = req
         .scopes
         .iter()
-        .map(|s| Scope::from_str(s).ok_or_else(|| WebError::bad_request(format!("unknown scope: {s}"))))
+        .map(|s| {
+            Scope::from_str(s).ok_or_else(|| WebError::bad_request(format!("unknown scope: {s}")))
+        })
         .collect::<Result<_, _>>()?;
     let created = state.keys.create(&ctx, &req.name, scopes).await?;
     Ok(Json(CreatedKeyDto {

@@ -4,8 +4,8 @@
 use crate::audit::Auditor;
 use crate::ctx::ActorContext;
 use crate::error::AppError;
-use core_domain::entities::Role;
 use core_domain::entities::PermissionCategory;
+use core_domain::entities::Role;
 use core_domain::error::DomainError;
 use core_domain::ids::RoleId;
 use core_domain::ports::{PermissionRepo, RoleRepo};
@@ -24,7 +24,11 @@ impl RoleService {
         permissions: Arc<dyn PermissionRepo>,
         auditor: Auditor,
     ) -> Self {
-        Self { roles, permissions, auditor }
+        Self {
+            roles,
+            permissions,
+            auditor,
+        }
     }
 
     pub async fn list(&self, ctx: &ActorContext) -> Result<Vec<Role>, AppError> {
@@ -47,8 +51,15 @@ impl RoleService {
             return Err(DomainError::Invalid("role name is required".into()).into());
         }
         let key = slugify(name);
-        if self.roles.find_by_key(ctx.actor.org_id, &key).await?.is_some() {
-            return Err(DomainError::Conflict("a role with that name already exists".into()).into());
+        if self
+            .roles
+            .find_by_key(ctx.actor.org_id, &key)
+            .await?
+            .is_some()
+        {
+            return Err(
+                DomainError::Conflict("a role with that name already exists".into()).into(),
+            );
         }
 
         let base = self

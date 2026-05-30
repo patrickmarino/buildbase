@@ -46,7 +46,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/roles", get(roles::list).post(roles::create))
         .route("/permissions/matrix", get(roles::matrix))
         .route("/permissions/matrix/cell", patch(roles::cycle_cell))
-        .route("/org", get(org::get_org).patch(org::update).delete(org::delete))
+        .route(
+            "/org",
+            get(org::get_org).patch(org::update).delete(org::delete),
+        )
         .route("/org/transfer-ownership", post(org::transfer))
         .route("/org/transfer-ownership/accept", post(org::accept))
         .route("/audit", get(audit::list))

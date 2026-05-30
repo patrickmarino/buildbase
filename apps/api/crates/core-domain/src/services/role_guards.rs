@@ -117,8 +117,16 @@ mod tests {
         let base = RoleId::new();
         let new = RoleId::new();
         let base_cells = vec![
-            MatrixCell { action_key: "users.invite".into(), role_id: base, state: PermissionState::Allow },
-            MatrixCell { action_key: "org.delete".into(), role_id: base, state: PermissionState::Deny },
+            MatrixCell {
+                action_key: "users.invite".into(),
+                role_id: base,
+                state: PermissionState::Allow,
+            },
+            MatrixCell {
+                action_key: "org.delete".into(),
+                role_id: base,
+                state: PermissionState::Deny,
+            },
         ];
         let copied = build_custom_role_cells(&base_cells, new);
         assert_eq!(copied.len(), 2);

@@ -66,7 +66,11 @@ impl AppState {
             auditor.clone(),
             clock.clone(),
         ));
-        let roles = Arc::new(RoleService::new(roles_repo.clone(), perms_repo.clone(), auditor.clone()));
+        let roles = Arc::new(RoleService::new(
+            roles_repo.clone(),
+            perms_repo.clone(),
+            auditor.clone(),
+        ));
         let permissions = Arc::new(PermissionService::new(
             perms_repo.clone(),
             roles_repo.clone(),

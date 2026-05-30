@@ -33,7 +33,11 @@ pub async fn list(
         .and_then(|s| roles.values().find(|r| r.key == s).map(|r| r.id));
     let filter = UserFilter {
         role_id,
-        status: q.status.as_deref().filter(|s| *s != "all").and_then(UserStatus::from_str),
+        status: q
+            .status
+            .as_deref()
+            .filter(|s| *s != "all")
+            .and_then(UserStatus::from_str),
         query: q.q.filter(|s| !s.is_empty()),
     };
     let users = state.users.list(&ctx, filter).await?;
@@ -45,7 +49,10 @@ pub async fn invite(
     CurrentUser(ctx): CurrentUser,
     Json(req): Json<InviteReq>,
 ) -> WebResult<Json<UserDto>> {
-    let user = state.users.invite(&ctx, &req.email, &req.role, req.scope).await?;
+    let user = state
+        .users
+        .invite(&ctx, &req.email, &req.role, req.scope)
+        .await?;
     let roles = roles_map(&state, &ctx).await?;
     Ok(Json(user_dto(&user, &roles)))
 }
@@ -70,9 +77,12 @@ pub async fn set_status(
     Path(id): Path<Uuid>,
     Json(req): Json<SetStatusReq>,
 ) -> WebResult<Json<UserDto>> {
-    let status = UserStatus::from_str(&req.status)
-        .ok_or_else(|| WebError::bad_request("invalid status"))?;
-    let user = state.users.set_status(&ctx, UserId::from_uuid(id), status).await?;
+    let status =
+        UserStatus::from_str(&req.status).ok_or_else(|| WebError::bad_request("invalid status"))?;
+    let user = state
+        .users
+        .set_status(&ctx, UserId::from_uuid(id), status)
+        .await?;
     let roles = roles_map(&state, &ctx).await?;
     Ok(Json(user_dto(&user, &roles)))
 }

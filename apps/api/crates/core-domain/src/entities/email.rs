@@ -75,7 +75,9 @@ mod tests {
 
     #[test]
     fn rejects_invalid() {
-        for bad in ["nope", "a@b", "@b.co", "a@.co", "a b@c.co", "a@b c.co", "a@@b.co"] {
+        for bad in [
+            "nope", "a@b", "@b.co", "a@.co", "a b@c.co", "a@b c.co", "a@@b.co",
+        ] {
             assert!(Email::parse(bad).is_err(), "should reject {bad:?}");
         }
     }

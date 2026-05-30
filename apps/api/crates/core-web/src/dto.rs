@@ -7,9 +7,7 @@ use core_domain::entities::organization::{
     MfaConfig, MfaEnforce, MfaMethod, Organization, PasswordPolicy, SsoConfig, SsoProvider,
 };
 use core_domain::entities::role::BuiltinRole;
-use core_domain::entities::{
-    ApiKey, AuditEvent, MatrixCell, PermissionMatrix, Role, User,
-};
+use core_domain::entities::{ApiKey, AuditEvent, MatrixCell, PermissionMatrix, Role, User};
 use core_domain::ids::RoleId;
 use core_domain::services::authz::{can, AuthzInput};
 use core_domain::services::matrix_rules;
@@ -149,7 +147,11 @@ impl SsoDto {
     pub fn into_domain(self) -> SsoConfig {
         SsoConfig {
             enabled: self.enabled,
-            provider: if self.provider == "oidc" { SsoProvider::Oidc } else { SsoProvider::Saml },
+            provider: if self.provider == "oidc" {
+                SsoProvider::Oidc
+            } else {
+                SsoProvider::Saml
+            },
             url: self.url,
         }
     }
@@ -265,7 +267,10 @@ pub fn matrix_dto(m: &PermissionMatrix, roles: &HashMap<RoleId, Role>) -> Matrix
             actions: g
                 .actions
                 .iter()
-                .map(|a| ActionDto { key: a.key.clone(), label: a.label.clone() })
+                .map(|a| ActionDto {
+                    key: a.key.clone(),
+                    label: a.label.clone(),
+                })
                 .collect(),
         })
         .collect();
@@ -292,7 +297,11 @@ pub fn matrix_dto(m: &PermissionMatrix, roles: &HashMap<RoleId, Role>) -> Matrix
         })
         .collect();
 
-    MatrixDto { groups, columns, cells }
+    MatrixDto {
+        groups,
+        columns,
+        cells,
+    }
 }
 
 #[derive(Serialize)]
@@ -332,7 +341,10 @@ pub fn audit_dto(e: &AuditEvent) -> AuditDto {
     AuditDto {
         id: e.id.to_string(),
         ts: iso(e.ts),
-        actor: AuditActorDto { name: e.actor_name.clone(), role: e.actor_role_key.clone() },
+        actor: AuditActorDto {
+            name: e.actor_name.clone(),
+            role: e.actor_role_key.clone(),
+        },
         action: e.action.clone(),
         category: e.category.as_str().to_string(),
         target: e.target.clone(),
@@ -395,7 +407,9 @@ pub fn org_dto(o: &Organization) -> OrgDto {
         id: o.id.to_string(),
         name: o.name.clone(),
         domain: o.domain.clone(),
-        branding: BrandingDto { accent_color: o.branding.accent_color.clone() },
+        branding: BrandingDto {
+            accent_color: o.branding.accent_color.clone(),
+        },
         mfa: MfaDto {
             enabled: o.mfa.enabled,
             method: match o.mfa.method {
