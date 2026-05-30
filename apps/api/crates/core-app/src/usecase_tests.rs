@@ -25,6 +25,8 @@ fn users(w: &World) -> UserService {
         w.users_repo(),
         w.roles_repo(),
         w.sessions_repo(),
+        w.org_repo(),
+        w.hasher.clone(),
         w.auditor.clone(),
         w.clock.clone(),
     )
@@ -258,6 +260,101 @@ async fn admin_cannot_assign_owner() {
         err,
         AppError::Domain(DomainError::PrivilegeEscalation(_))
     ));
+}
+
+#[tokio::test]
+async fn create_user_makes_active_user_who_can_sign_in() {
+    let w = World::new();
+    let ctx = w.ctx_for(w.owner_id).await;
+    let before = w.audit_count();
+    let u = users(&w)
+        .create_user(
+            &ctx,
+            "Aoife Brennan",
+            "aoife@madespace.co",
+            "member",
+            Some("Notting Hill".into()),
+            "Sufficient1!",
+        )
+        .await
+        .unwrap();
+    assert_eq!(u.status, UserStatus::Active);
+    assert!(u.password_hash.is_some());
+    assert_eq!(u.name, "Aoife Brennan");
+    assert_eq!(w.audit_count(), before + 1);
+    assert_eq!(w.last_audit_action().as_deref(), Some("user.create"));
+
+    // the new user can actually log in with the set password
+    let (signed_in, _session) = auth(&w)
+        .login(w.org_id, "aoife@madespace.co", "Sufficient1!")
+        .await
+        .unwrap();
+    assert_eq!(signed_in.id, u.id);
+}
+
+#[tokio::test]
+async fn create_user_rejects_weak_password() {
+    let w = World::new();
+    let ctx = w.ctx_for(w.owner_id).await;
+    // policy requires min 12 + number + symbol
+    let err = users(&w)
+        .create_user(&ctx, "Weak", "weak@madespace.co", "member", None, "short")
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        AppError::Domain(DomainError::PasswordPolicy(_))
+    ));
+}
+
+#[tokio::test]
+async fn create_user_rejects_duplicate_email() {
+    let w = World::new();
+    let ctx = w.ctx_for(w.owner_id).await;
+    let err = users(&w)
+        .create_user(
+            &ctx,
+            "Dupe",
+            "tomas@madespace.co",
+            "member",
+            None,
+            "Sufficient1!",
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Domain(DomainError::Conflict(_))));
+}
+
+#[tokio::test]
+async fn create_user_blocks_privilege_escalation() {
+    let w = World::new();
+    let ctx = w.ctx_for(w.admin_id).await; // admin can't create an owner
+    let err = users(&w)
+        .create_user(
+            &ctx,
+            "Sneaky",
+            "sneaky@madespace.co",
+            "owner",
+            None,
+            "Sufficient1!",
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        AppError::Domain(DomainError::PrivilegeEscalation(_))
+    ));
+}
+
+#[tokio::test]
+async fn member_cannot_create_user() {
+    let w = World::new();
+    let ctx = w.ctx_for(w.member_id).await;
+    let err = users(&w)
+        .create_user(&ctx, "X", "x@madespace.co", "member", None, "Sufficient1!")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Domain(DomainError::Forbidden(_))));
 }
 
 // ── Permissions ───────────────────────────────────────────────

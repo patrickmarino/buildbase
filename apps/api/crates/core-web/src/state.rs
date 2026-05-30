@@ -63,6 +63,8 @@ impl AppState {
             users_repo.clone(),
             roles_repo.clone(),
             sessions_repo.clone(),
+            org_repo.clone(),
+            hasher.clone(),
             auditor.clone(),
             clock.clone(),
         ));

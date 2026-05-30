@@ -45,6 +45,19 @@ pub struct InviteReq {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreateUserReq {
+    #[serde(default)]
+    pub name: String,
+    pub email: String,
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub scope: Option<String>,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChangeRoleReq {
     pub role_id: uuid::Uuid,
 }

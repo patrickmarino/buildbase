@@ -47,10 +47,23 @@ test("create a custom role adds a new matrix column", async ({ page }) => {
 test("invite a user shows them in the roster", async ({ page }) => {
   await login(page);
   await page.getByRole("button", { name: "Users", exact: true }).click();
-  await page.getByRole("button", { name: "Invite user" }).click();
+  await page.getByRole("button", { name: "Invite", exact: true }).click();
   const email = `newhire${Date.now().toString().slice(-6)}@madespace.co`;
   await page.getByPlaceholder("name@madespace.co").fill(email);
   await page.getByRole("button", { name: "Send invitation" }).click();
+  await expect(page.locator("tbody").getByText(email)).toBeVisible();
+});
+
+test("manually create a user appears in the roster", async ({ page }) => {
+  await login(page);
+  await page.getByRole("button", { name: "Users", exact: true }).click();
+  await page.getByRole("button", { name: "New user" }).click();
+  const email = `manual${Date.now().toString().slice(-6)}@madespace.co`;
+  await page.getByLabel("Full name").fill("Marcus Webb");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Initial password").fill("Sufficient1!");
+  await page.getByLabel("Confirm password").fill("Sufficient1!");
+  await page.getByRole("button", { name: "Create user" }).click();
   await expect(page.locator("tbody").getByText(email)).toBeVisible();
 });
 

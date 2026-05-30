@@ -278,3 +278,61 @@ async fn invite_user_appears_in_listing(pool: PgPool) {
         .collect();
     assert!(emails.contains(&"aoife@madespace.co"));
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn manually_created_user_can_sign_in(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let cookie = login(&app).await;
+
+    let resp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/api/users",
+            Some(&cookie),
+            json!({
+                "name": "Marcus Webb",
+                "email": "marcus@madespace.co",
+                "role": "manager",
+                "scope": "Hampstead",
+                "password": "Sufficient1!"
+            }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let created = body_json(resp).await;
+    assert_eq!(created["status"], "active");
+    assert_eq!(created["roleKey"], "manager");
+    assert_eq!(created["name"], "Marcus Webb");
+
+    // the manually-created user can immediately sign in with the set password
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/login",
+            None,
+            json!({ "email": "marcus@madespace.co", "password": "Sufficient1!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn create_user_rejects_weak_password_422(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let cookie = login(&app).await;
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/users",
+            Some(&cookie),
+            json!({ "name": "Weak", "email": "weak@madespace.co", "role": "member", "password": "short" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "password_policy");
+}

@@ -82,6 +82,8 @@ export const api = {
     request<UserDto[]>("GET", `/users${qs(p as Record<string, string | undefined>)}`),
   invite: (email: string, role: string, scope?: string) =>
     request<UserDto>("POST", "/users/invite", { email, role, scope }),
+  createUser: (input: { name: string; email: string; role: string; scope?: string; password: string }) =>
+    request<UserDto>("POST", "/users", input),
   changeRole: (userId: string, roleId: string) =>
     request<UserDto>("PATCH", `/users/${userId}/role`, { roleId }),
   setStatus: (userId: string, status: string) =>

@@ -10,8 +10,8 @@ use core_domain::entities::role::BuiltinRole;
 use core_domain::entities::{PermissionCategory, Role, User, UserStatus};
 use core_domain::error::DomainError;
 use core_domain::ids::{RoleId, UserId};
-use core_domain::ports::{RoleRepo, SessionRepo, UserFilter, UserRepo};
-use core_domain::services::role_guards;
+use core_domain::ports::{OrgRepo, PasswordHasher, RoleRepo, SessionRepo, UserFilter, UserRepo};
+use core_domain::services::{password_policy, role_guards};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -19,6 +19,8 @@ pub struct UserService {
     users: Arc<dyn UserRepo>,
     roles: Arc<dyn RoleRepo>,
     sessions: Arc<dyn SessionRepo>,
+    orgs: Arc<dyn OrgRepo>,
+    hasher: Arc<dyn PasswordHasher>,
     auditor: Auditor,
     clock: Arc<dyn core_domain::ports::Clock>,
 }
@@ -30,10 +32,13 @@ fn is_admin_role(role: &Role) -> bool {
 }
 
 impl UserService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         users: Arc<dyn UserRepo>,
         roles: Arc<dyn RoleRepo>,
         sessions: Arc<dyn SessionRepo>,
+        orgs: Arc<dyn OrgRepo>,
+        hasher: Arc<dyn PasswordHasher>,
         auditor: Auditor,
         clock: Arc<dyn core_domain::ports::Clock>,
     ) -> Self {
@@ -41,6 +46,8 @@ impl UserService {
             users,
             roles,
             sessions,
+            orgs,
+            hasher,
             auditor,
             clock,
         }
@@ -110,6 +117,89 @@ impl UserService {
                 Some("—".into()),
                 Some(format!(
                     "{} · {}",
+                    role.name,
+                    scope.unwrap_or_else(|| "—".into())
+                )),
+            )
+            .await?;
+        Ok(user)
+    }
+
+    /// Create a user manually with their basic information and an initial
+    /// password. Unlike `invite`, the user is **Active** immediately and can sign
+    /// in. The password is validated against the org's policy and stored as an
+    /// Argon2 hash. Same authorization and escalation rules as invite.
+    pub async fn create_user(
+        &self,
+        ctx: &ActorContext,
+        name: &str,
+        email: &str,
+        role_key: &str,
+        scope: Option<String>,
+        password: &str,
+    ) -> Result<User, AppError> {
+        ctx.require("users.invite")?;
+
+        let email = Email::parse(email)?;
+        if self
+            .users
+            .find_by_email(ctx.actor.org_id, &email)
+            .await?
+            .is_some()
+        {
+            return Err(
+                DomainError::Conflict("a user with that email already exists".into()).into(),
+            );
+        }
+
+        let role_key = if role_key.is_empty() {
+            "member"
+        } else {
+            role_key
+        };
+        let role = self.role_by_key(ctx, role_key).await?;
+        role_guards::check_no_privilege_escalation(&ctx.actor_role, &role)?;
+
+        // The initial password must satisfy the org's password policy.
+        let org = self
+            .orgs
+            .get(ctx.actor.org_id)
+            .await?
+            .ok_or_else(|| DomainError::NotFound("organization".into()))?;
+        password_policy::validate_password(password, &org.password_policy)
+            .map_err(DomainError::PasswordPolicy)?;
+        let hash = self.hasher.hash(password)?;
+
+        let name = name.trim();
+        let display = if name.is_empty() {
+            derive_name(&email)
+        } else {
+            name.to_string()
+        };
+
+        let user = User {
+            id: UserId::new(),
+            org_id: ctx.actor.org_id,
+            email,
+            name: display,
+            role_id: role.id,
+            status: UserStatus::Active,
+            scope: scope.clone(),
+            password_hash: Some(hash),
+            created_at: self.clock.now(),
+            last_active_at: None,
+        };
+        self.users.insert(&user).await?;
+
+        self.auditor
+            .record(
+                ctx,
+                "user.create",
+                PermissionCategory::Users,
+                Some(user.name.clone()),
+                Some("—".into()),
+                Some(format!(
+                    "{} · {} · active",
                     role.name,
                     scope.unwrap_or_else(|| "—".into())
                 )),

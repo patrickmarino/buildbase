@@ -1,6 +1,6 @@
 //! User identity endpoints.
 
-use crate::dto::{user_dto, ChangeRoleReq, InviteReq, SetStatusReq, UserDto};
+use crate::dto::{user_dto, ChangeRoleReq, CreateUserReq, InviteReq, SetStatusReq, UserDto};
 use crate::error::{WebError, WebResult};
 use crate::extractors::CurrentUser;
 use crate::routes::roles_map;
@@ -52,6 +52,27 @@ pub async fn invite(
     let user = state
         .users
         .invite(&ctx, &req.email, &req.role, req.scope)
+        .await?;
+    let roles = roles_map(&state, &ctx).await?;
+    Ok(Json(user_dto(&user, &roles)))
+}
+
+/// Manually create an active user with their basic info + an initial password.
+pub async fn create(
+    State(state): State<AppState>,
+    CurrentUser(ctx): CurrentUser,
+    Json(req): Json<CreateUserReq>,
+) -> WebResult<Json<UserDto>> {
+    let user = state
+        .users
+        .create_user(
+            &ctx,
+            &req.name,
+            &req.email,
+            &req.role,
+            req.scope,
+            &req.password,
+        )
         .await?;
     let roles = roles_map(&state, &ctx).await?;
     Ok(Json(user_dto(&user, &roles)))
