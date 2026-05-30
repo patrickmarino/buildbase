@@ -72,6 +72,26 @@ pub trait Clock: Send + Sync {
     fn now(&self) -> OffsetDateTime;
 }
 
+/// A plain-text email to send.
+#[derive(Debug, Clone)]
+pub struct OutgoingEmail {
+    pub to_address: String,
+    pub to_name: String,
+    pub subject: String,
+    pub body: String,
+}
+
+/// An email-delivery failure (SMTP, formatting, …).
+#[derive(Debug, Error)]
+#[error("email send failed: {0}")]
+pub struct EmailError(pub String);
+
+/// Outbound email. Infra delivers via SMTP (Mailpit in dev); tests capture.
+#[async_trait::async_trait]
+pub trait EmailSender: Send + Sync {
+    async fn send(&self, email: &OutgoingEmail) -> Result<(), EmailError>;
+}
+
 /// Convenience: a policy-aware password check used by the auth/use-case layer.
 /// (The pure rule lives in [`crate::services::password_policy`].)
 pub fn assert_password_ok(pw: &str, policy: &PasswordPolicy) -> Result<(), DomainError> {

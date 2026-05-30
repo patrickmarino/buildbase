@@ -47,6 +47,13 @@ Frontend: http://localhost:5173 · API: http://localhost:8080.
 | `pnpm migrate` | Run sqlx migrations |
 | `pnpm e2e` | Playwright cross-stack smoke |
 
+### Email testing (Mailpit)
+
+`pnpm db:up` / `pnpm dev` also start **Mailpit**, a local SMTP sink. Outbound mail
+(invites, manual-create welcomes) is delivered to it; view the inbox at
+**http://localhost:8026**. Configure via `SMTP_HOST`/`SMTP_PORT`/`EMAIL_FROM` in
+`.env` — leave `SMTP_HOST` empty to disable sending (the API just logs instead).
+
 ### Backend only
 
 ```bash

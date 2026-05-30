@@ -419,6 +419,27 @@ impl TokenGenerator for FakeTokens {
     }
 }
 
+/// Captures every email "sent" so tests can assert on it.
+#[derive(Default)]
+pub struct CapturingMailer {
+    sent: Mutex<Vec<OutgoingEmail>>,
+}
+impl CapturingMailer {
+    pub fn sent(&self) -> Vec<OutgoingEmail> {
+        self.sent.lock().unwrap().clone()
+    }
+    pub fn last(&self) -> Option<OutgoingEmail> {
+        self.sent.lock().unwrap().last().cloned()
+    }
+}
+#[async_trait::async_trait]
+impl EmailSender for CapturingMailer {
+    async fn send(&self, email: &OutgoingEmail) -> Result<(), EmailError> {
+        self.sent.lock().unwrap().push(email.clone());
+        Ok(())
+    }
+}
+
 // ── World ─────────────────────────────────────────────────────
 /// A fully-seeded in-memory world: one org, all default roles + matrix, an Owner,
 /// an Admin, and a Member. Exposes the services and a context builder.
@@ -433,6 +454,7 @@ pub struct World {
     pub clock: Arc<dyn Clock>,
     pub tokens: Arc<FakeTokens>,
     pub hasher: Arc<FakeHasher>,
+    pub mailer: Arc<CapturingMailer>,
 }
 
 impl World {
@@ -541,6 +563,7 @@ impl World {
             clock,
             tokens: Arc::new(FakeTokens::default()),
             hasher: Arc::new(FakeHasher),
+            mailer: Arc::new(CapturingMailer::default()),
         }
     }
 

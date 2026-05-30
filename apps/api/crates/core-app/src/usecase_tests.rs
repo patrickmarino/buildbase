@@ -27,6 +27,7 @@ fn users(w: &World) -> UserService {
         w.sessions_repo(),
         w.org_repo(),
         w.hasher.clone(),
+        w.mailer.clone(),
         w.auditor.clone(),
         w.clock.clone(),
     )
@@ -133,6 +134,15 @@ async fn invite_creates_invited_user_and_audits() {
     assert_eq!(u.name, "Aoife");
     assert_eq!(w.audit_count(), before + 1);
     assert_eq!(w.last_audit_action().as_deref(), Some("user.invite"));
+
+    // an invitation email was sent to the invitee
+    let mail = w.mailer.last().expect("invite email");
+    assert_eq!(mail.to_address, "aoife@madespace.co");
+    assert!(
+        mail.subject.contains("invited"),
+        "subject: {}",
+        mail.subject
+    );
 }
 
 #[tokio::test]
@@ -283,6 +293,15 @@ async fn create_user_makes_active_user_who_can_sign_in() {
     assert_eq!(u.name, "Aoife Brennan");
     assert_eq!(w.audit_count(), before + 1);
     assert_eq!(w.last_audit_action().as_deref(), Some("user.create"));
+
+    // a welcome email was sent
+    assert_eq!(w.mailer.sent().len(), 1);
+    assert!(w
+        .mailer
+        .last()
+        .unwrap()
+        .subject
+        .contains("account is ready"));
 
     // the new user can actually log in with the set password
     let (signed_in, _session) = auth(&w)
