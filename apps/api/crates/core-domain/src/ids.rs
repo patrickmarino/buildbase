@@ -71,6 +71,10 @@ uuid_id!(
     /// Identifies an [`crate::entities::invite_token::InviteToken`].
     InviteTokenId
 );
+uuid_id!(
+    /// Identifies a [`crate::entities::password_reset_token::PasswordResetToken`].
+    PasswordResetTokenId
+);
 
 /// An opaque, high-entropy session identifier. This is the value stored in the
 /// `core_sid` cookie; it is *not* a UUID (it comes from a CSPRNG token), so it

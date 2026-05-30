@@ -17,8 +17,8 @@ use core_domain::entities::organization::{
 };
 use core_domain::entities::role::BuiltinRole;
 use core_domain::entities::{
-    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PermissionMatrix, PermissionState,
-    Role, Session, User, UserStatus,
+    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PasswordResetToken,
+    PermissionMatrix, PermissionState, Role, Session, User, UserStatus,
 };
 use core_domain::ids::*;
 use core_domain::ports::*;
@@ -41,6 +41,7 @@ pub struct Store {
     pub keys: Mutex<HashMap<ApiKeyId, ApiKey>>,
     pub sessions: Mutex<HashMap<SessionId, Session>>,
     pub invite_tokens: Mutex<HashMap<InviteTokenId, InviteToken>>,
+    pub reset_tokens: Mutex<HashMap<PasswordResetTokenId, PasswordResetToken>>,
 }
 
 impl Store {
@@ -415,6 +416,43 @@ impl InviteTokenRepo for InviteTokenRepoFake {
     }
 }
 
+// ── PasswordResetTokenRepo ────────────────────────────────────
+pub struct PasswordResetTokenRepoFake(pub Arc<Store>);
+
+#[async_trait::async_trait]
+impl PasswordResetTokenRepo for PasswordResetTokenRepoFake {
+    async fn insert(&self, token: &PasswordResetToken) -> RepoResult<()> {
+        self.0
+            .reset_tokens
+            .lock()
+            .unwrap()
+            .insert(token.id, token.clone());
+        Ok(())
+    }
+    async fn find_by_hash(&self, token_hash: &str) -> RepoResult<Option<PasswordResetToken>> {
+        Ok(self
+            .0
+            .reset_tokens
+            .lock()
+            .unwrap()
+            .values()
+            .find(|t| t.token_hash == token_hash)
+            .cloned())
+    }
+    async fn delete(&self, id: PasswordResetTokenId) -> RepoResult<()> {
+        self.0.reset_tokens.lock().unwrap().remove(&id);
+        Ok(())
+    }
+    async fn delete_for_user(&self, user: UserId) -> RepoResult<()> {
+        self.0
+            .reset_tokens
+            .lock()
+            .unwrap()
+            .retain(|_, t| t.user_id != user);
+        Ok(())
+    }
+}
+
 // ── Fakes for the capability ports ────────────────────────────
 pub struct FixedClock(pub OffsetDateTime);
 impl Clock for FixedClock {
@@ -458,6 +496,10 @@ impl TokenGenerator for FakeTokens {
     fn new_invite_token(&self) -> String {
         let n = self.counter.fetch_add(1, Ordering::Relaxed);
         format!("invite-tok-{n}")
+    }
+    fn new_password_reset_token(&self) -> String {
+        let n = self.counter.fetch_add(1, Ordering::Relaxed);
+        format!("reset-tok-{n}")
     }
 }
 
@@ -659,6 +701,9 @@ impl World {
     }
     pub fn invite_tokens_repo(&self) -> Arc<dyn InviteTokenRepo> {
         Arc::new(InviteTokenRepoFake(self.store.clone()))
+    }
+    pub fn reset_tokens_repo(&self) -> Arc<dyn PasswordResetTokenRepo> {
+        Arc::new(PasswordResetTokenRepoFake(self.store.clone()))
     }
     pub fn audit_repo(&self) -> Arc<dyn AuditRepo> {
         Arc::new(AuditRepoFake(self.store.clone()))

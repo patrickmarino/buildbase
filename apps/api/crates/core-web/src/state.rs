@@ -10,12 +10,12 @@ use core_app::{
 use core_domain::ids::OrgId;
 use core_domain::ports::{
     ApiKeyRepo, AuditRepo, Clock, EmailSender, InviteTokenRepo, OrgRepo, PasswordHasher,
-    PermissionRepo, RoleRepo, SessionRepo, TokenGenerator, UserRepo,
+    PasswordResetTokenRepo, PermissionRepo, RoleRepo, SessionRepo, TokenGenerator, UserRepo,
 };
 use core_infra::{
     Argon2Hasher, NoopMailer, PgApiKeyRepo, PgAuditRepo, PgInviteTokenRepo, PgOrgRepo,
-    PgPermissionRepo, PgRoleRepo, PgSessionRepo, PgUserRepo, RandTokenGenerator, SmtpMailer,
-    SystemClock,
+    PgPasswordResetTokenRepo, PgPermissionRepo, PgRoleRepo, PgSessionRepo, PgUserRepo,
+    RandTokenGenerator, SmtpMailer, SystemClock,
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -73,6 +73,8 @@ impl AppState {
         let sessions_repo: Arc<dyn SessionRepo> = Arc::new(PgSessionRepo::new(pool.clone()));
         let invite_tokens_repo: Arc<dyn InviteTokenRepo> =
             Arc::new(PgInviteTokenRepo::new(pool.clone()));
+        let reset_tokens_repo: Arc<dyn PasswordResetTokenRepo> =
+            Arc::new(PgPasswordResetTokenRepo::new(pool.clone()));
 
         let hasher: Arc<dyn PasswordHasher> = Arc::new(Argon2Hasher);
         let tokens: Arc<dyn TokenGenerator> = Arc::new(RandTokenGenerator);
@@ -87,8 +89,11 @@ impl AppState {
             sessions_repo.clone(),
             org_repo.clone(),
             invite_tokens_repo.clone(),
+            reset_tokens_repo.clone(),
             hasher.clone(),
             tokens.clone(),
+            mailer.clone(),
+            cfg.web_origin.clone(),
             clock.clone(),
             cfg.session_ttl,
         ));

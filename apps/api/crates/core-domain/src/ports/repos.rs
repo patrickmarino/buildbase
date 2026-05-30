@@ -4,10 +4,10 @@
 use super::RepoResult;
 use crate::entities::email::Email;
 use crate::entities::{
-    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PermissionMatrix, PermissionState,
-    Role, Session, User, UserStatus,
+    ApiKey, ApiKeyStatus, AuditEvent, InviteToken, Organization, PasswordResetToken,
+    PermissionMatrix, PermissionState, Role, Session, User, UserStatus,
 };
-use crate::ids::{ApiKeyId, InviteTokenId, OrgId, RoleId, SessionId, UserId};
+use crate::ids::{ApiKeyId, InviteTokenId, OrgId, PasswordResetTokenId, RoleId, SessionId, UserId};
 use async_trait::async_trait;
 
 /// Filter for listing users (mirrors the Users page toolbar).
@@ -119,5 +119,14 @@ pub trait InviteTokenRepo: Send + Sync {
     async fn find_by_hash(&self, token_hash: &str) -> RepoResult<Option<InviteToken>>;
     async fn delete(&self, id: InviteTokenId) -> RepoResult<()>;
     /// Invalidate any outstanding tokens for a user (called on re-invite / accept).
+    async fn delete_for_user(&self, user: UserId) -> RepoResult<()>;
+}
+
+#[async_trait]
+pub trait PasswordResetTokenRepo: Send + Sync {
+    async fn insert(&self, token: &PasswordResetToken) -> RepoResult<()>;
+    async fn find_by_hash(&self, token_hash: &str) -> RepoResult<Option<PasswordResetToken>>;
+    async fn delete(&self, id: PasswordResetTokenId) -> RepoResult<()>;
+    /// Invalidate any outstanding reset tokens for a user (on re-request / consume).
     async fn delete_for_user(&self, user: UserId) -> RepoResult<()>;
 }

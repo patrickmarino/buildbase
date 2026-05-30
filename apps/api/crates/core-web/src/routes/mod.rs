@@ -38,6 +38,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/health", get(health))
         .route("/auth/login", post(auth::login))
         .route("/auth/accept-invite", post(auth::accept_invite))
+        .route("/auth/forgot-password", post(auth::forgot_password))
+        .route("/auth/reset-password", post(auth::reset_password))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/me", get(auth::me))
         .route("/users", get(users::list).post(users::create))

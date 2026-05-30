@@ -40,6 +40,17 @@ pub struct AcceptInviteReq {
 }
 
 #[derive(Deserialize)]
+pub struct ForgotPasswordReq {
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+pub struct ResetPasswordReq {
+    pub token: String,
+    pub password: String,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InviteReq {
     pub email: String,

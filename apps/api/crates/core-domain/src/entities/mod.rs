@@ -5,6 +5,7 @@ pub mod audit;
 pub mod email;
 pub mod invite_token;
 pub mod organization;
+pub mod password_reset_token;
 pub mod permission;
 pub mod role;
 pub mod session;
@@ -18,6 +19,7 @@ pub use organization::{
     Branding, MfaConfig, MfaEnforce, MfaMethod, Organization, PasswordPolicy, SsoConfig,
     SsoProvider,
 };
+pub use password_reset_token::PasswordResetToken;
 pub use permission::{
     Action, MatrixCell, PermissionCategory, PermissionGroup, PermissionMatrix, PermissionState,
 };

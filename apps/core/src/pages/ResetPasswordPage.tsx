@@ -1,26 +1,38 @@
-// Sign-in screen — the one page added on top of the prototype. Editorial card
-// on the cream canvas, matching the MadeSpace brand.
+// Reset-password screen. Reached via the link in the password-reset email
+// (`/reset-password?token=…`). The user chooses a new password; on success the
+// account is signed in. Mirrors the LoginPage editorial card.
 
 import React, { useState } from "react";
 import { useStore } from "../store/AppContext";
 import { ApiError } from "../lib/api";
 import { I } from "../components/icons";
 
-export function LoginPage() {
-  const { login } = useStore();
-  const [email, setEmail] = useState("");
+export function ResetPasswordPage({ token }: { token: string }) {
+  const { resetPassword } = useStore();
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");
+    if (password !== confirm) {
+      setErr("Those passwords don’t match.");
+      return;
+    }
     setBusy(true);
     try {
-      await login(email.trim(), password);
+      await resetPassword(token, password);
+      window.history.replaceState(null, "", "/");
     } catch (ex) {
-      setErr(ex instanceof ApiError && ex.status === 401 ? "Those credentials don’t match." : "Sign-in failed. Try again.");
+      if (ex instanceof ApiError && ex.status === 401) {
+        setErr("This reset link is invalid or has expired. Request a new one.");
+      } else if (ex instanceof ApiError && ex.status === 422) {
+        setErr(ex.message || "That password doesn’t meet the organization’s policy.");
+      } else {
+        setErr("Couldn’t reset your password. Try again.");
+      }
     } finally {
       setBusy(false);
     }
@@ -73,7 +85,7 @@ export function LoginPage() {
 
         <div className="sec-eyebrow">
           <span className="rule" />
-          <span>Sign in</span>
+          <span>Reset password</span>
         </div>
         <h1
           style={{
@@ -85,48 +97,42 @@ export function LoginPage() {
             letterSpacing: "-0.01em",
           }}
         >
-          Welcome back.
+          Choose a new password.
         </h1>
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
           <div className="field">
-            <label htmlFor="email">Email address</label>
+            <label htmlFor="rp-password">New password</label>
             <input
-              id="email"
+              id="rp-password"
               className={"inp" + (err ? " bad" : "")}
-              type="email"
+              type="password"
               autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@madespace.co"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
             />
           </div>
           <div className="field">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="rp-confirm">Confirm password</label>
             <input
-              id="password"
+              id="rp-confirm"
               className={"inp" + (err ? " bad" : "")}
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
               placeholder="••••••••"
             />
             {err ? (
               <div className="hint err">{err}</div>
             ) : (
-              <div className="hint">Use the credentials seeded by the API on first boot.</div>
+              <div className="hint">Pick a strong password you don’t use elsewhere.</div>
             )}
           </div>
           <button className="btn btn-gold" type="submit" disabled={busy} style={{ marginTop: "var(--space-2)" }}>
             <I.shield />
-            {busy ? "Signing in…" : "Sign in"}
+            {busy ? "Resetting…" : "Reset password & sign in"}
           </button>
-          <a
-            href="/forgot-password"
-            style={{ textAlign: "center", color: "var(--ms-gold-600)", fontSize: 13, textDecoration: "none" }}
-          >
-            Forgot password?
-          </a>
         </form>
       </div>
     </div>

@@ -3,6 +3,8 @@ import { AppProvider, ToastHost, useStore } from "./store/AppContext";
 import { Sidebar, type PageId } from "./components/Shell";
 import { LoginPage } from "./pages/LoginPage";
 import { AcceptInvitePage } from "./pages/AcceptInvitePage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RolesPage } from "./pages/RolesPage";
 import { UsersPage } from "./pages/UsersPage";
 import { OrgPage } from "./pages/OrgPage";
@@ -23,11 +25,13 @@ function AppShell() {
 
   if (!ready) return null;
   if (!me) {
-    // Unauthenticated: a `/accept-invite?token=…` link sets a password instead of logging in.
-    const inviteToken = window.location.pathname.includes("accept-invite")
-      ? new URLSearchParams(window.location.search).get("token")
-      : null;
-    return inviteToken ? <AcceptInvitePage token={inviteToken} /> : <LoginPage />;
+    // Unauthenticated routes: email links land here before there's a session.
+    const { pathname, search } = window.location;
+    const token = new URLSearchParams(search).get("token");
+    if (pathname.includes("accept-invite") && token) return <AcceptInvitePage token={token} />;
+    if (pathname.includes("reset-password") && token) return <ResetPasswordPage token={token} />;
+    if (pathname.includes("forgot-password")) return <ForgotPasswordPage />;
+    return <LoginPage />;
   }
 
   const Page = PAGES[page];
