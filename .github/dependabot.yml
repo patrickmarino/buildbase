@@ -41,6 +41,17 @@ updates:
         update-types:
           - minor
           - patch
+    # React 19 is a deliberate migration, not an auto-bump; pin React 18 by
+    # ignoring its major updates.
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
 
   # ── GitHub Actions used by the CI workflow ─────────────────
   - package-ecosystem: github-actions
