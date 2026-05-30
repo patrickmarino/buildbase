@@ -11,6 +11,10 @@ dist/
 # Env
 .env
 .env.local
+.env.bak
+
+# Claude — personal local overrides (the .example is committed)
+.claude/settings.local.json
 
 # Playwright
 /e2e/test-results/

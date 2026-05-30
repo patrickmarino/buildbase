@@ -17,6 +17,7 @@
     "db:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
     "db:reset": "bash scripts/db-reset.sh",
     "migrate": "bash scripts/migrate.sh",
+    "changelog:release": "node scripts/changelog-release.mjs",
     "e2e": "turbo run test --filter=e2e"
   },
   "devDependencies": {

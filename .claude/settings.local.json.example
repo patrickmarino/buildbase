@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy this file to settings.local.json for personal overrides. settings.local.json is gitignored.",
+  "permissions": {
+    "allow": ["Bash(docker:*)", "Bash(docker compose:*)", "Bash(brew:*)"]
+  }
+}

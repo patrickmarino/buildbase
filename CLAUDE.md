@@ -64,3 +64,27 @@ Key flow: a request → `CurrentUser` extractor (session → role → matrix loa
 - `store/AppContext.tsx` — the only store: signed-in actor (`me`), `can(action)` gating (from `me.permissions`), toasts, brand accent. `App.tsx` gates on auth (Login vs. shell) and routes pages via sidebar state.
 - Pages in `pages/` mirror the five product areas; shared components (`Sidebar`, `Topbar`, `Modal`, `RoleChip`, etc.) in `components/`. The matrix updates optimistically with the server's returned cell state.
 - Tests use Vitest + Testing Library + **MSW** (`src/test/server.ts`); register handlers per test with `server.use(...)`. In jsdom, relative `/api` URLs resolve against `http://localhost`, so the same client works in tests.
+
+## Working in this repo (conventions)
+
+### Planning — test-first
+Plan features Red → Green → Refactor: write the **failing test first** (it defines the behavior), then the minimum code to pass, then refactor while green. Plans for new features should list the failing tests before the implementation steps. Pure rules → unit tests in `core-domain`; use-cases → `core-app` tests with the in-memory `World`; endpoints → `#[sqlx::test]` HTTP tests; UI → Vitest+MSW for components/flows, Playwright (`e2e/`) for full cross-stack browser flows.
+
+### DB modifications
+Whenever work touches the database (schema, migration, seed, ad-hoc query against real data), target the **dockerized Postgres first** (`pnpm db:up`; it's on host port 5440). Only fall back to another database if Docker Postgres is genuinely unavailable — and surface that fallback before running it. Seed defaults live in `core-domain/src/seed.rs`, not hand-written in migrations.
+
+### Naming
+- Rust: `snake_case` modules/functions, `PascalCase` types/traits, `SCREAMING_SNAKE_CASE` consts.
+- TS: PascalCase components/types, camelCase vars/fns/hooks (`useX`), UPPER_SNAKE_CASE consts; booleans `is`/`has`/`should`. No `any`; type-only imports use `type`.
+- Keep frontend enum/string values aligned with backend DTOs (lowercase, e.g. `"allow"`, `"active"`).
+
+### Security-sensitive code
+Authorization, password hashing, sessions, the API client, and migrations are security-sensitive — see `.claude/docs/SECURITY.md` for the file list and invariants (deny-by-default authz, audit every mutation, session revocation, no secret leakage, parameterized SQL). The `guard-sensitive-files.sh` hook warns on edits to these.
+
+### Agents & skills
+- Subagents: **backend-developer** (Rust/Axum clean architecture), **frontend-developer** (React/Vite/MSW), **skeptic-reviewer** (adversarial security/UX review — run after a feature or plan). Each has persistent memory under `.claude/agent-memory/`.
+- Skills: `/bootstrap` (from-scratch setup wizard), `/git-ship` (atomic commits + verify + changelog fragment + PR), `/changelog-release` (aggregate `.changelog.d/` fragments → `CHANGELOG.md`), `/deps-audit` (`cargo audit` + `pnpm audit` + verify).
+- Changelog: never edit `.claude/docs/CHANGELOG.md` per PR — drop a fragment in `.changelog.d/` (see its README); `/changelog-release` aggregates.
+
+### Guardrails (enforced by hooks in `.claude/settings.json`)
+Blocked: editing `.env`/secret/key files (use `.env.example`); force push, hard reset, force clean, `rm -rf /|~|$HOME`, and destructive SQL (`DROP TABLE/DATABASE`, `TRUNCATE`). Personal allowances (docker, brew) go in `settings.local.json` (gitignored — copy from the `.example`).

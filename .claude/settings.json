@@ -1,0 +1,103 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git push --set-upstream origin:*)",
+      "Bash(git mv:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git remote:*)",
+      "Bash(git worktree:*)",
+
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue:*)",
+
+      "Bash(pnpm install:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm bootstrap)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run build)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm run lint)",
+      "Bash(pnpm run test:*)",
+      "Bash(pnpm run test)",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm run dev:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm e2e:*)",
+      "Bash(pnpm db:up)",
+      "Bash(pnpm db:down)",
+      "Bash(pnpm db:reset)",
+      "Bash(pnpm migrate)",
+      "Bash(pnpm changelog:release:*)",
+      "Bash(pnpm --filter:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(pnpm exec vitest:*)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(pnpm exec playwright:*)",
+
+      "Bash(cargo build:*)",
+      "Bash(cargo build)",
+      "Bash(cargo test:*)",
+      "Bash(cargo test)",
+      "Bash(cargo run:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo sqlx:*)",
+      "Bash(sqlx migrate:*)",
+
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(rm -rf /:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/guard-sensitive-files.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/guard-dangerous-commands.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
