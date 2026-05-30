@@ -1,6 +1,6 @@
 //! Audit log: search/filter and CSV export.
 
-use crate::dto::{audit_dto, AuditDto};
+use crate::dto::{audit_dto, AuditDto, ErrorBody};
 use crate::error::WebResult;
 use crate::extractors::CurrentUser;
 use crate::state::AppState;
@@ -11,11 +11,16 @@ use axum::Json;
 use core_domain::entities::PermissionCategory;
 use core_domain::ports::AuditQuery;
 use serde::Deserialize;
+use utoipa::IntoParams;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SearchQuery {
+    /// Case-insensitive substring over actor + action + target.
     pub q: Option<String>,
+    /// Filter by category: `users` · `roles` · `org` · `audit` · `keys`; `all` means any.
     pub category: Option<String>,
+    /// Zero-based page index (200 events per page).
     pub page: Option<i64>,
 }
 
@@ -34,6 +39,16 @@ fn to_query(q: &SearchQuery) -> AuditQuery {
     }
 }
 
+/// Search the append-only audit log, filtered by category and free text.
+#[utoipa::path(
+    get, path = "/api/audit", tag = "audit",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "Matching audit events", body = [AuditDto]),
+        (status = 403, description = "Missing audit.view", body = ErrorBody),
+    ),
+    security(("session" = []))
+)]
 pub async fn list(
     State(state): State<AppState>,
     CurrentUser(ctx): CurrentUser,
@@ -43,6 +58,16 @@ pub async fn list(
     Ok(Json(events.iter().map(audit_dto).collect()))
 }
 
+/// Export the filtered audit log as a CSV attachment.
+#[utoipa::path(
+    get, path = "/api/audit/export", tag = "audit",
+    params(SearchQuery),
+    responses(
+        (status = 200, description = "CSV download", content_type = "text/csv", body = String),
+        (status = 403, description = "Missing audit.view", body = ErrorBody),
+    ),
+    security(("session" = []))
+)]
 pub async fn export(
     State(state): State<AppState>,
     CurrentUser(ctx): CurrentUser,

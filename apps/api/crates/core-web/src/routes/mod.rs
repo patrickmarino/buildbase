@@ -1,14 +1,15 @@
 //! HTTP routes. Auth uses a session cookie; the `CurrentUser` extractor guards
 //! every protected handler. All endpoints are mounted under `/api`.
 
-mod audit;
-mod auth;
-mod keys;
-mod org;
-mod roles;
-mod users;
+pub(crate) mod audit;
+pub(crate) mod auth;
+pub(crate) mod keys;
+pub(crate) mod org;
+pub(crate) mod roles;
+pub(crate) mod users;
 
 use crate::error::WebError;
+use crate::openapi::ApiDoc;
 use crate::state::AppState;
 use axum::routing::{get, patch, post};
 use axum::Router;
@@ -19,6 +20,8 @@ use std::collections::HashMap;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 pub fn build_router(state: AppState) -> Router {
     let cors = CorsLayer::new()
@@ -63,12 +66,16 @@ pub fn build_router(state: AppState) -> Router {
 
     Router::new()
         .nest("/api", api)
+        // Interactive API docs: Swagger UI at /swagger-ui, spec at /api-docs/openapi.json.
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .layer(cors)
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
 }
 
-async fn health() -> &'static str {
+/// Liveness probe.
+#[utoipa::path(get, path = "/api/health", tag = "meta", responses((status = 200, description = "OK", body = String)))]
+pub(crate) async fn health() -> &'static str {
     "ok"
 }
 

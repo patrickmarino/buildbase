@@ -24,33 +24,44 @@ fn iso_opt(t: Option<OffsetDateTime>) -> Option<String> {
     t.map(iso)
 }
 
+/// The stable error envelope returned for every non-2xx response. `error` is a
+/// machine-readable code (e.g. `forbidden`, `conflict`, `password_policy`) the
+/// SPA branches on; `message` is human-readable.
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct ErrorBody {
+    #[schema(example = "forbidden")]
+    pub error: String,
+    #[schema(example = "you don't have permission to do that")]
+    pub message: String,
+}
+
 // ════════════════════════════════════════════════════════════
 // Requests
 // ════════════════════════════════════════════════════════════
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct LoginReq {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct AcceptInviteReq {
     pub token: String,
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct ForgotPasswordReq {
     pub email: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct ResetPasswordReq {
     pub token: String,
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InviteReq {
     pub email: String,
@@ -60,7 +71,7 @@ pub struct InviteReq {
     pub scope: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateUserReq {
     #[serde(default)]
@@ -73,45 +84,45 @@ pub struct CreateUserReq {
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeRoleReq {
     pub role_id: uuid::Uuid,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct SetStatusReq {
     pub status: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateRoleReq {
     pub name: String,
     pub base_role_id: uuid::Uuid,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CycleCellReq {
     pub action_key: String,
     pub role_id: uuid::Uuid,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateKeyReq {
     pub name: String,
     pub scopes: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TransferReq {
     pub target_user_id: uuid::Uuid,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateOrgReq {
     pub name: Option<String>,
@@ -125,13 +136,13 @@ pub struct UpdateOrgReq {
 // ════════════════════════════════════════════════════════════
 // Shared sub-DTOs (round-trip)
 // ════════════════════════════════════════════════════════════
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, utoipa::ToSchema)]
 pub struct MfaDto {
     pub enabled: bool,
     pub method: String,
     pub enforce: String,
 }
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PasswordPolicyDto {
     pub min_length: u8,
@@ -139,7 +150,7 @@ pub struct PasswordPolicyDto {
     pub require_symbol: bool,
     pub rotation_days: Option<u16>,
 }
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, utoipa::ToSchema)]
 pub struct SsoDto {
     pub enabled: bool,
     pub provider: String,
@@ -190,7 +201,7 @@ impl SsoDto {
 // ════════════════════════════════════════════════════════════
 // Responses
 // ════════════════════════════════════════════════════════════
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UserDto {
     pub id: String,
@@ -221,7 +232,7 @@ pub fn user_dto(u: &User, roles: &HashMap<RoleId, Role>) -> UserDto {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleDto {
     pub id: String,
@@ -261,18 +272,18 @@ fn inherits_label(r: &Role, roles: &HashMap<RoleId, Role>) -> String {
     .to_string()
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct ActionDto {
     pub key: String,
     pub label: String,
 }
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct GroupDto {
     pub category: String,
     pub label: String,
     pub actions: Vec<ActionDto>,
 }
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CellDto {
     pub action_key: String,
@@ -280,7 +291,7 @@ pub struct CellDto {
     pub state: String,
     pub locked: bool,
 }
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct MatrixDto {
     pub groups: Vec<GroupDto>,
     pub columns: Vec<RoleDto>,
@@ -334,7 +345,7 @@ pub fn matrix_dto(m: &PermissionMatrix, roles: &HashMap<RoleId, Role>) -> Matrix
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CellResultDto {
     pub action_key: String,
@@ -349,12 +360,12 @@ pub fn cell_result_dto(c: &MatrixCell) -> CellResultDto {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct AuditActorDto {
     pub name: String,
     pub role: String,
 }
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditDto {
     pub id: String,
@@ -384,7 +395,7 @@ pub fn audit_dto(e: &AuditEvent) -> AuditDto {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiKeyDto {
     pub id: String,
@@ -407,14 +418,14 @@ pub fn api_key_dto(k: &ApiKey) -> ApiKeyDto {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatedKeyDto {
     pub key: ApiKeyDto,
     pub token: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OrgDto {
     pub id: String,
@@ -427,7 +438,7 @@ pub struct OrgDto {
     pub owner_id: String,
     pub pending_owner_id: Option<String>,
 }
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BrandingDto {
     pub accent_color: String,
@@ -475,7 +486,7 @@ pub fn org_dto(o: &Organization) -> OrgDto {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MeDto {
     pub user: UserDto,
