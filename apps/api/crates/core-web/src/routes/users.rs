@@ -65,7 +65,14 @@ pub async fn create(
 ) -> WebResult<Json<UserDto>> {
     let user = state
         .users
-        .create_user(&ctx, &req.name, &req.email, &req.role, req.scope, &req.password)
+        .create_user(
+            &ctx,
+            &req.name,
+            &req.email,
+            &req.role,
+            req.scope,
+            &req.password,
+        )
         .await?;
     let roles = roles_map(&state, &ctx).await?;
     Ok(Json(user_dto(&user, &roles)))

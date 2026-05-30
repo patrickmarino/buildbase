@@ -268,7 +268,14 @@ async fn create_user_makes_active_user_who_can_sign_in() {
     let ctx = w.ctx_for(w.owner_id).await;
     let before = w.audit_count();
     let u = users(&w)
-        .create_user(&ctx, "Aoife Brennan", "aoife@madespace.co", "member", Some("Notting Hill".into()), "Sufficient1!")
+        .create_user(
+            &ctx,
+            "Aoife Brennan",
+            "aoife@madespace.co",
+            "member",
+            Some("Notting Hill".into()),
+            "Sufficient1!",
+        )
         .await
         .unwrap();
     assert_eq!(u.status, UserStatus::Active);
@@ -294,7 +301,10 @@ async fn create_user_rejects_weak_password() {
         .create_user(&ctx, "Weak", "weak@madespace.co", "member", None, "short")
         .await
         .unwrap_err();
-    assert!(matches!(err, AppError::Domain(DomainError::PasswordPolicy(_))));
+    assert!(matches!(
+        err,
+        AppError::Domain(DomainError::PasswordPolicy(_))
+    ));
 }
 
 #[tokio::test]
@@ -302,7 +312,14 @@ async fn create_user_rejects_duplicate_email() {
     let w = World::new();
     let ctx = w.ctx_for(w.owner_id).await;
     let err = users(&w)
-        .create_user(&ctx, "Dupe", "tomas@madespace.co", "member", None, "Sufficient1!")
+        .create_user(
+            &ctx,
+            "Dupe",
+            "tomas@madespace.co",
+            "member",
+            None,
+            "Sufficient1!",
+        )
         .await
         .unwrap_err();
     assert!(matches!(err, AppError::Domain(DomainError::Conflict(_))));
@@ -313,10 +330,20 @@ async fn create_user_blocks_privilege_escalation() {
     let w = World::new();
     let ctx = w.ctx_for(w.admin_id).await; // admin can't create an owner
     let err = users(&w)
-        .create_user(&ctx, "Sneaky", "sneaky@madespace.co", "owner", None, "Sufficient1!")
+        .create_user(
+            &ctx,
+            "Sneaky",
+            "sneaky@madespace.co",
+            "owner",
+            None,
+            "Sufficient1!",
+        )
         .await
         .unwrap_err();
-    assert!(matches!(err, AppError::Domain(DomainError::PrivilegeEscalation(_))));
+    assert!(matches!(
+        err,
+        AppError::Domain(DomainError::PrivilegeEscalation(_))
+    ));
 }
 
 #[tokio::test]
