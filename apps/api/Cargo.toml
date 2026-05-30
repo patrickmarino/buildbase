@@ -53,7 +53,7 @@ argon2 = "0.5"
 base64 = "0.22"
 sha2 = "0.10"
 # OS CSPRNG for salts + tokens, independent of argon2's rand_core cluster.
-getrandom = "0.3"
+getrandom = "0.4"
 
 # Errors / async traits / logging
 thiserror = "2"
