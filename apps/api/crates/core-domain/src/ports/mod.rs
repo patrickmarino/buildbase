@@ -8,8 +8,8 @@
 mod repos;
 
 pub use repos::{
-    ApiKeyRepo, AuditQuery, AuditRepo, InviteTokenRepo, OrgRepo, PermissionRepo, RoleRepo,
-    SessionRepo, UserFilter, UserRepo,
+    ApiKeyRepo, AuditQuery, AuditRepo, InviteTokenRepo, OrgRepo, PasswordResetTokenRepo,
+    PermissionRepo, RoleRepo, SessionRepo, UserFilter, UserRepo,
 };
 
 use crate::entities::organization::PasswordPolicy;
@@ -68,6 +68,9 @@ pub trait TokenGenerator: Send + Sync {
     /// A high-entropy single-use invitation token (emailed to the invitee).
     /// Hash it with [`Self::hash_api_token`] for storage.
     fn new_invite_token(&self) -> String;
+    /// A high-entropy single-use password-reset token (emailed to the user).
+    /// Hash it with [`Self::hash_api_token`] for storage.
+    fn new_password_reset_token(&self) -> String;
 }
 
 /// The clock. Injectable so tests can pin time.

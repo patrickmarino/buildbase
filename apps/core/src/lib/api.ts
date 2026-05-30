@@ -76,6 +76,10 @@ export const api = {
     request<MeDto>("POST", "/auth/login", { email, password }),
   acceptInvite: (token: string, password: string) =>
     request<MeDto>("POST", "/auth/accept-invite", { token, password }),
+  requestPasswordReset: (email: string) =>
+    request<void>("POST", "/auth/forgot-password", { email }),
+  resetPassword: (token: string, password: string) =>
+    request<MeDto>("POST", "/auth/reset-password", { token, password }),
   logout: () => request<void>("POST", "/auth/logout"),
   me: () => request<MeDto>("GET", "/auth/me"),
 

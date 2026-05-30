@@ -46,6 +46,11 @@ impl TokenGenerator for RandTokenGenerator {
         // 32 bytes ≈ 256 bits — opaque, URL-safe (goes in an email link).
         URL_SAFE_NO_PAD.encode(Self::random_bytes::<32>())
     }
+
+    fn new_password_reset_token(&self) -> String {
+        // 32 bytes ≈ 256 bits — opaque, URL-safe (goes in an email link).
+        URL_SAFE_NO_PAD.encode(Self::random_bytes::<32>())
+    }
 }
 
 fn hex(bytes: &[u8]) -> String {

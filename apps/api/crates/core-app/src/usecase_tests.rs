@@ -4,9 +4,9 @@
 
 use crate::testing::World;
 use crate::*;
-use core_domain::entities::{InviteToken, Scope, UserStatus};
+use core_domain::entities::{InviteToken, PasswordResetToken, Scope, UserStatus};
 use core_domain::error::DomainError;
-use core_domain::ids::InviteTokenId;
+use core_domain::ids::{InviteTokenId, PasswordResetTokenId};
 use core_domain::ports::{AuditQuery, TokenGenerator};
 
 fn auth(w: &World) -> AuthService {
@@ -17,8 +17,11 @@ fn auth(w: &World) -> AuthService {
         w.sessions_repo(),
         w.org_repo(),
         w.invite_tokens_repo(),
+        w.reset_tokens_repo(),
         w.hasher.clone(),
         w.tokens.clone(),
+        w.mailer.clone(),
+        "https://admin.example".into(),
         w.clock.clone(),
         World::session_ttl(),
     )
@@ -459,7 +462,7 @@ async fn accept_invite_token_is_single_use() {
         .unwrap();
     // the same token can't be reused
     let err = auth(&w)
-        .accept_invite(&token, "Another1!pw")
+        .accept_invite(&token, "AnotherStrongPass1!")
         .await
         .unwrap_err();
     assert!(matches!(err, AppError::Unauthorized));
@@ -492,6 +495,144 @@ async fn accept_invite_rejects_expired_token() {
     }
     let err = auth(&w)
         .accept_invite("expired-token", "Sufficient1!")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
+}
+
+// ── Password reset ────────────────────────────────────────────
+#[tokio::test]
+async fn request_reset_emails_a_link_for_an_active_user() {
+    let w = World::new();
+    auth(&w)
+        .request_password_reset(w.org_id, "elena@madespace.co")
+        .await
+        .unwrap();
+    let mail = w.mailer.last().expect("a reset email");
+    assert_eq!(mail.to_address, "elena@madespace.co");
+    assert!(mail.body.contains("/reset-password?token="));
+    // a token row was stored (hashed)
+    assert_eq!(w.store.reset_tokens.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn request_reset_is_silent_for_unknown_email() {
+    let w = World::new();
+    // Must not error or send mail — no account enumeration.
+    auth(&w)
+        .request_password_reset(w.org_id, "nobody@madespace.co")
+        .await
+        .unwrap();
+    assert!(w.mailer.sent().is_empty());
+    assert!(w.store.reset_tokens.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn reset_password_sets_new_password_revokes_sessions_and_signs_in() {
+    let w = World::new();
+    // The owner has an existing session (e.g. signed in elsewhere).
+    let (_u, old_session) = auth(&w)
+        .login(w.org_id, "elena@madespace.co", "ownerpw")
+        .await
+        .unwrap();
+
+    auth(&w)
+        .request_password_reset(w.org_id, "elena@madespace.co")
+        .await
+        .unwrap();
+    let token = token_from_last_email(&w);
+
+    let (user, new_session) = auth(&w)
+        .reset_password(&token, "BrandNewPass1!")
+        .await
+        .unwrap();
+    assert_eq!(user.id, w.owner_id);
+    // Pre-existing sessions are revoked; only the fresh one remains.
+    assert_ne!(new_session.id, old_session.id);
+    assert!(!w
+        .store
+        .sessions
+        .lock()
+        .unwrap()
+        .contains_key(&old_session.id));
+    assert_eq!(w.session_count(), 1);
+
+    // The new password works; the old one no longer does.
+    auth(&w)
+        .login(w.org_id, "elena@madespace.co", "BrandNewPass1!")
+        .await
+        .unwrap();
+    let err = auth(&w)
+        .login(w.org_id, "elena@madespace.co", "ownerpw")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
+}
+
+#[tokio::test]
+async fn reset_password_rejects_unknown_token() {
+    let w = World::new();
+    let err = auth(&w)
+        .reset_password("not-a-real-token", "BrandNewPass1!")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
+}
+
+#[tokio::test]
+async fn reset_password_is_single_use() {
+    let w = World::new();
+    auth(&w)
+        .request_password_reset(w.org_id, "elena@madespace.co")
+        .await
+        .unwrap();
+    let token = token_from_last_email(&w);
+    auth(&w)
+        .reset_password(&token, "BrandNewPass1!")
+        .await
+        .unwrap();
+    let err = auth(&w)
+        .reset_password(&token, "AnotherStrongPass1!")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
+}
+
+#[tokio::test]
+async fn reset_password_rejects_weak_password() {
+    let w = World::new();
+    auth(&w)
+        .request_password_reset(w.org_id, "elena@madespace.co")
+        .await
+        .unwrap();
+    let token = token_from_last_email(&w);
+    let err = auth(&w).reset_password(&token, "short").await.unwrap_err();
+    assert!(matches!(
+        err,
+        AppError::Domain(DomainError::PasswordPolicy(_))
+    ));
+}
+
+#[tokio::test]
+async fn reset_password_rejects_expired_token() {
+    let w = World::new();
+    let now = w.clock.now();
+    {
+        let mut t = w.store.reset_tokens.lock().unwrap();
+        let id = PasswordResetTokenId::new();
+        t.insert(
+            id,
+            PasswordResetToken {
+                id,
+                user_id: w.owner_id,
+                token_hash: w.tokens.hash_api_token("expired-reset"),
+                created_at: now - time::Duration::hours(2),
+                expires_at: now - time::Duration::hours(1),
+            },
+        );
+    }
+    let err = auth(&w)
+        .reset_password("expired-reset", "BrandNewPass1!")
         .await
         .unwrap_err();
     assert!(matches!(err, AppError::Unauthorized));

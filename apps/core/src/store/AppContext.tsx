@@ -18,6 +18,7 @@ interface Store {
   setAccent: (hex: string) => void;
   login: (email: string, password: string) => Promise<void>;
   acceptInvite: (token: string, password: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
   can: (action: string) => boolean;
@@ -63,6 +64,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMe(await api.acceptInvite(token, password));
   }, []);
 
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    setMe(await api.resetPassword(token, password));
+  }, []);
+
   const logout = useCallback(async () => {
     await api.logout().catch(() => {});
     setMe(null);
@@ -82,8 +87,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const can = useCallback((action: string) => !!me?.permissions.includes(action), [me]);
 
   const value = useMemo<Store>(
-    () => ({ me, ready, accent, setAccent, login, acceptInvite, logout, refreshMe, can, toast, toasts }),
-    [me, ready, accent, login, acceptInvite, logout, refreshMe, can, toast, toasts],
+    () => ({ me, ready, accent, setAccent, login, acceptInvite, resetPassword, logout, refreshMe, can, toast, toasts }),
+    [me, ready, accent, login, acceptInvite, resetPassword, logout, refreshMe, can, toast, toasts],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -431,3 +431,119 @@ async fn accept_invite_bad_token_is_401(pool: PgPool) {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn forgot_then_reset_password_signs_in(pool: PgPool) {
+    use core_app::testing::CapturingMailer;
+    use std::sync::Arc;
+
+    let hasher = Argon2Hasher;
+    ensure_seeded(
+        &pool,
+        &hasher,
+        &SeedConfig {
+            org_name: "MadeSpace Studio".into(),
+            org_domain: Some("madespace.co".into()),
+            owner_email: "elena@madespace.co".into(),
+            owner_name: "Elena Marchetti".into(),
+            owner_password: "owner-password-123!".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let org = sole_org_id(&pool).await.unwrap().unwrap();
+    let mailer = Arc::new(CapturingMailer::default());
+    let app = build_router(AppState::with_mailer(pool, test_cfg(), org, mailer.clone()));
+
+    // request a reset → always 204
+    let resp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/forgot-password",
+            None,
+            json!({ "email": "elena@madespace.co" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    // pull the reset token out of the captured email
+    let body = mailer.last().expect("reset email").body;
+    let token = body
+        .split("token=")
+        .nth(1)
+        .and_then(|s| s.split_whitespace().next())
+        .expect("token in link")
+        .to_string();
+
+    // reset → 200 + Set-Cookie (signed in)
+    let resp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/reset-password",
+            None,
+            json!({ "token": token, "password": "Reset-Password-123!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert!(resp.headers().get(header::SET_COOKIE).is_some());
+    let me = body_json(resp).await;
+    assert_eq!(me["user"]["email"], "elena@madespace.co");
+
+    // the new password works at login; the old one no longer does
+    let resp = app
+        .clone()
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/login",
+            None,
+            json!({ "email": "elena@madespace.co", "password": "Reset-Password-123!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/login",
+            None,
+            json!({ "email": "elena@madespace.co", "password": "owner-password-123!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn forgot_password_unknown_email_is_204(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/forgot-password",
+            None,
+            json!({ "email": "ghost@madespace.co" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn reset_password_bad_token_is_401(pool: PgPool) {
+    let app = app_with_seed(pool).await;
+    let resp = app
+        .oneshot(json_req(
+            "POST",
+            "/api/auth/reset-password",
+            None,
+            json!({ "token": "not-real", "password": "Reset-Password-123!" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
