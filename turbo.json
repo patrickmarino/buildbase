@@ -1,6 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
+  "//": "Turbo 2.x uses strict env mode — tasks only see declared env vars. These are passed through (not part of cache keys) so the e2e webServers (API + Vite) get the DB/seed/proxy config.",
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "PG_HOST_PORT",
+    "API_BIND_ADDR",
+    "WEB_ORIGIN",
+    "SEED_OWNER_EMAIL",
+    "SEED_OWNER_PASSWORD",
+    "SEED_ORG_NAME",
+    "SEED_ORG_DOMAIN",
+    "E2E_EMAIL",
+    "E2E_PASSWORD",
+    "VITE_API_PROXY",
+    "VITE_API_BASE"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
