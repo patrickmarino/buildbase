@@ -39,7 +39,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/me", get(auth::me))
-        .route("/users", get(users::list))
+        .route("/users", get(users::list).post(users::create))
         .route("/users/invite", post(users::invite))
         .route("/users/{id}/role", patch(users::change_role))
         .route("/users/{id}/status", patch(users::set_status))

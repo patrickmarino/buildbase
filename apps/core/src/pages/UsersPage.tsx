@@ -19,6 +19,7 @@ export function UsersPage() {
   const [roleF, setRoleF] = useState("all");
   const [statusF, setStatusF] = useState("all");
   const [invite, setInvite] = useState(false);
+  const [createUser, setCreateUser] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<UserDto | null>(null);
   const [changeRole, setChangeRole] = useState<UserDto | null>(null);
@@ -63,10 +64,16 @@ export function UsersPage() {
         eyebrow="Identity"
         title="Users"
         actions={
-          <button className="btn btn-gold" onClick={() => setInvite(true)}>
-            <I.mail />
-            Invite user
-          </button>
+          <>
+            <button className="btn btn-outline" onClick={() => setInvite(true)}>
+              <I.mail />
+              Invite
+            </button>
+            <button className="btn btn-gold" onClick={() => setCreateUser(true)}>
+              <I.plus />
+              New user
+            </button>
+          </>
         }
       />
       <div className="scroll">
@@ -184,6 +191,7 @@ export function UsersPage() {
       </div>
 
       {invite && <InviteModal roles={roles} onClose={() => setInvite(false)} onDone={() => reload()} />}
+      {createUser && <CreateUserModal roles={roles} onClose={() => setCreateUser(false)} onDone={() => reload()} />}
       {changeRole && (
         <ChangeRoleModal user={changeRole} roles={roles} onClose={() => setChangeRole(null)} onDone={() => reload()} />
       )}
@@ -355,6 +363,146 @@ function InviteModal({ roles, onClose, onDone }: { roles: RoleDto[]; onClose: ()
         <button className="btn btn-gold" onClick={send}>
           <I.mail />
           Send invitation
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function CreateUserModal({ roles, onClose, onDone }: { roles: RoleDto[]; onClose: () => void; onDone: () => void }) {
+  const { toast } = useStore();
+  const assignable = roles.filter((r) => ["admin", "manager", "member", "viewer"].includes(r.key));
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("member");
+  const [scope, setScope] = useState("Studio");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [err, setErr] = useState("");
+
+  const policyOk = password.length >= 12 && /\d/.test(password) && /[^A-Za-z0-9\s]/.test(password);
+
+  const create = async () => {
+    if (!name.trim()) return setErr("Enter the person’s name.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return setErr("Enter a valid email address.");
+    if (!policyOk) return setErr("Password must be at least 12 characters and include a number and a symbol.");
+    if (password !== confirm) return setErr("Passwords don’t match.");
+    try {
+      const u = await api.createUser({ name: name.trim(), email: email.trim(), role, scope, password });
+      toast(
+        <span>
+          <b>{u.name}</b> created as {roles.find((r) => r.key === role)?.name} — they can sign in now.
+        </span>,
+        "users",
+      );
+      onDone();
+      onClose();
+    } catch (ex) {
+      setErr(ex instanceof ApiError ? ex.message : "Could not create the user.");
+    }
+  };
+
+  return (
+    <Modal onClose={onClose}>
+      <div className="modal-head">
+        <Eyebrow label="New user" />
+        <h2>Create a user</h2>
+      </div>
+      <div className="modal-body">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-5)" }}>
+          <div className="field">
+            <label htmlFor="cu-name">Full name</label>
+            <input
+              id="cu-name"
+              className={"inp" + (err && !name.trim() ? " bad" : "")}
+              value={name}
+              autoFocus
+              onChange={(e) => {
+                setName(e.target.value);
+                setErr("");
+              }}
+              placeholder="e.g. Marcus Webb"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="cu-email">Email address</label>
+            <input
+              id="cu-email"
+              className="inp"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErr("");
+              }}
+              placeholder="name@madespace.co"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="cu-role">Role</label>
+            <select id="cu-role" className="inp" value={role} onChange={(e) => setRole(e.target.value)}>
+              {assignable.map((r) => (
+                <option key={r.id} value={r.key}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="cu-scope">Scope</label>
+            <select id="cu-scope" className="inp" value={scope} onChange={(e) => setScope(e.target.value)}>
+              {["Studio", "Hampstead", "Notting Hill", "Auditor"].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="cu-password">Initial password</label>
+            <input
+              id="cu-password"
+              className="inp"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErr("");
+              }}
+              placeholder="••••••••••••"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="cu-confirm">Confirm password</label>
+            <input
+              id="cu-confirm"
+              className="inp"
+              type="password"
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                setErr("");
+              }}
+              placeholder="••••••••••••"
+            />
+          </div>
+        </div>
+        {err ? (
+          <div className="hint err">{err}</div>
+        ) : (
+          <div className="hint">
+            The account is active immediately. Password must be ≥ 12 characters with a number and a symbol; the user can
+            change it after signing in.
+          </div>
+        )}
+      </div>
+      <div className="modal-foot">
+        <button className="btn btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="btn btn-gold" onClick={create}>
+          <I.plus />
+          Create user
         </button>
       </div>
     </Modal>
