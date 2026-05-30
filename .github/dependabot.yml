@@ -1,0 +1,61 @@
+version: 2
+
+# Keeps dependencies current across the polyglot monorepo. PRs target `develop`
+# (the integration branch); minor/patch bumps are grouped to cut PR noise, and
+# major bumps come as their own PRs for deliberate review.
+updates:
+  # ── Rust crates (Cargo workspace at apps/api) ──────────────
+  - package-ecosystem: cargo
+    directory: /apps/api
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: develop
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - rust
+    commit-message:
+      prefix: "Config(deps)"
+    groups:
+      cargo-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # ── JavaScript (pnpm workspace root covers apps/core + e2e) ─
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: develop
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - javascript
+    commit-message:
+      prefix: "Config(deps)"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # ── GitHub Actions used by the CI workflow ─────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: develop
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "Config(ci)"
+    groups:
+      github-actions:
+        update-types:
+          - minor
+          - patch
