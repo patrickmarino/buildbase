@@ -35,3 +35,5 @@ sqlx = { workspace = true }
 [dev-dependencies]
 reqwest = { workspace = true }
 tower = { workspace = true }
+# Enables core-app's in-memory fakes (e.g. CapturingMailer) in HTTP tests.
+core-app = { workspace = true, features = ["test-support"] }

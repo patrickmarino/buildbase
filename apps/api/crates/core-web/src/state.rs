@@ -9,12 +9,13 @@ use core_app::{
 };
 use core_domain::ids::OrgId;
 use core_domain::ports::{
-    ApiKeyRepo, AuditRepo, Clock, EmailSender, OrgRepo, PasswordHasher, PermissionRepo, RoleRepo,
-    SessionRepo, TokenGenerator, UserRepo,
+    ApiKeyRepo, AuditRepo, Clock, EmailSender, InviteTokenRepo, OrgRepo, PasswordHasher,
+    PermissionRepo, RoleRepo, SessionRepo, TokenGenerator, UserRepo,
 };
 use core_infra::{
-    Argon2Hasher, NoopMailer, PgApiKeyRepo, PgAuditRepo, PgOrgRepo, PgPermissionRepo, PgRoleRepo,
-    PgSessionRepo, PgUserRepo, RandTokenGenerator, SmtpMailer, SystemClock,
+    Argon2Hasher, NoopMailer, PgApiKeyRepo, PgAuditRepo, PgInviteTokenRepo, PgOrgRepo,
+    PgPermissionRepo, PgRoleRepo, PgSessionRepo, PgUserRepo, RandTokenGenerator, SmtpMailer,
+    SystemClock,
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -33,8 +34,36 @@ pub struct AppState {
     pub default_org: OrgId,
 }
 
+/// Build the configured mailer: SMTP (Mailpit in dev) when `SMTP_HOST` is set,
+/// else a logging no-op.
+pub fn default_mailer(cfg: &WebConfig) -> Arc<dyn EmailSender> {
+    match cfg.smtp_host.as_deref() {
+        Some(host) => {
+            match SmtpMailer::new(host, cfg.smtp_port, &cfg.email_from, &cfg.email_from_name) {
+                Ok(m) => Arc::new(m),
+                Err(e) => {
+                    tracing::warn!("email disabled: {e}");
+                    Arc::new(NoopMailer)
+                }
+            }
+        }
+        None => Arc::new(NoopMailer),
+    }
+}
+
 impl AppState {
     pub fn new(pool: PgPool, cfg: WebConfig, default_org: OrgId) -> Self {
+        let mailer = default_mailer(&cfg);
+        Self::with_mailer(pool, cfg, default_org, mailer)
+    }
+
+    /// Like [`Self::new`] but with an injected mailer (used by tests to capture mail).
+    pub fn with_mailer(
+        pool: PgPool,
+        cfg: WebConfig,
+        default_org: OrgId,
+        mailer: Arc<dyn EmailSender>,
+    ) -> Self {
         let users_repo: Arc<dyn UserRepo> = Arc::new(PgUserRepo::new(pool.clone()));
         let roles_repo: Arc<dyn RoleRepo> = Arc::new(PgRoleRepo::new(pool.clone()));
         let perms_repo: Arc<dyn PermissionRepo> = Arc::new(PgPermissionRepo::new(pool.clone()));
@@ -42,25 +71,12 @@ impl AppState {
         let audit_repo: Arc<dyn AuditRepo> = Arc::new(PgAuditRepo::new(pool.clone()));
         let keys_repo: Arc<dyn ApiKeyRepo> = Arc::new(PgApiKeyRepo::new(pool.clone()));
         let sessions_repo: Arc<dyn SessionRepo> = Arc::new(PgSessionRepo::new(pool.clone()));
+        let invite_tokens_repo: Arc<dyn InviteTokenRepo> =
+            Arc::new(PgInviteTokenRepo::new(pool.clone()));
 
         let hasher: Arc<dyn PasswordHasher> = Arc::new(Argon2Hasher);
         let tokens: Arc<dyn TokenGenerator> = Arc::new(RandTokenGenerator);
         let clock: Arc<dyn Clock> = Arc::new(SystemClock);
-
-        // SMTP mailer (Mailpit in dev); falls back to a logging no-op if SMTP_HOST
-        // is unset or the transport can't be built.
-        let mailer: Arc<dyn EmailSender> = match cfg.smtp_host.as_deref() {
-            Some(host) => {
-                match SmtpMailer::new(host, cfg.smtp_port, &cfg.email_from, &cfg.email_from_name) {
-                    Ok(m) => Arc::new(m),
-                    Err(e) => {
-                        tracing::warn!("email disabled: {e}");
-                        Arc::new(NoopMailer)
-                    }
-                }
-            }
-            None => Arc::new(NoopMailer),
-        };
 
         let auditor = Auditor::new(audit_repo.clone(), clock.clone());
 
@@ -69,6 +85,8 @@ impl AppState {
             roles_repo.clone(),
             perms_repo.clone(),
             sessions_repo.clone(),
+            org_repo.clone(),
+            invite_tokens_repo.clone(),
             hasher.clone(),
             tokens.clone(),
             clock.clone(),
@@ -79,8 +97,11 @@ impl AppState {
             roles_repo.clone(),
             sessions_repo.clone(),
             org_repo.clone(),
+            invite_tokens_repo.clone(),
             hasher.clone(),
+            tokens.clone(),
             mailer.clone(),
+            cfg.web_origin.clone(),
             auditor.clone(),
             clock.clone(),
         ));

@@ -4,9 +4,10 @@
 
 use crate::testing::World;
 use crate::*;
-use core_domain::entities::{Scope, UserStatus};
+use core_domain::entities::{InviteToken, Scope, UserStatus};
 use core_domain::error::DomainError;
-use core_domain::ports::AuditQuery;
+use core_domain::ids::InviteTokenId;
+use core_domain::ports::{AuditQuery, TokenGenerator};
 
 fn auth(w: &World) -> AuthService {
     AuthService::new(
@@ -14,6 +15,8 @@ fn auth(w: &World) -> AuthService {
         w.roles_repo(),
         w.perms_repo(),
         w.sessions_repo(),
+        w.org_repo(),
+        w.invite_tokens_repo(),
         w.hasher.clone(),
         w.tokens.clone(),
         w.clock.clone(),
@@ -26,11 +29,24 @@ fn users(w: &World) -> UserService {
         w.roles_repo(),
         w.sessions_repo(),
         w.org_repo(),
+        w.invite_tokens_repo(),
         w.hasher.clone(),
+        w.tokens.clone(),
         w.mailer.clone(),
+        "http://localhost:5173".into(),
         w.auditor.clone(),
         w.clock.clone(),
     )
+}
+
+/// Extract the accept-invite token from the most recent email's body.
+fn token_from_last_email(w: &World) -> String {
+    let body = w.mailer.last().expect("invite email").body;
+    body.split("token=")
+        .nth(1)
+        .and_then(|s| s.split_whitespace().next())
+        .expect("token in link")
+        .to_string()
 }
 fn perms(w: &World) -> PermissionService {
     PermissionService::new(w.perms_repo(), w.roles_repo(), w.auditor.clone())
@@ -374,6 +390,111 @@ async fn member_cannot_create_user() {
         .await
         .unwrap_err();
     assert!(matches!(err, AppError::Domain(DomainError::Forbidden(_))));
+}
+
+// ── Accept invite (set password) ──────────────────────────────
+#[tokio::test]
+async fn accept_invite_sets_password_activates_and_signs_in() {
+    let w = World::new();
+    let owner = w.ctx_for(w.owner_id).await;
+    users(&w)
+        .invite(&owner, "aoife@madespace.co", "member", None)
+        .await
+        .unwrap();
+    let token = token_from_last_email(&w);
+
+    let (user, _session) = auth(&w)
+        .accept_invite(&token, "Sufficient1!")
+        .await
+        .unwrap();
+    assert_eq!(user.status, UserStatus::Active);
+    assert!(user.password_hash.is_some());
+
+    // the user can now sign in with the password they set
+    let (signed, _s) = auth(&w)
+        .login(w.org_id, "aoife@madespace.co", "Sufficient1!")
+        .await
+        .unwrap();
+    assert_eq!(signed.id, user.id);
+}
+
+#[tokio::test]
+async fn accept_invite_rejects_unknown_token() {
+    let w = World::new();
+    let err = auth(&w)
+        .accept_invite("not-a-real-token", "Sufficient1!")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
+}
+
+#[tokio::test]
+async fn accept_invite_rejects_weak_password() {
+    let w = World::new();
+    let owner = w.ctx_for(w.owner_id).await;
+    users(&w)
+        .invite(&owner, "aoife@madespace.co", "member", None)
+        .await
+        .unwrap();
+    let token = token_from_last_email(&w);
+    let err = auth(&w).accept_invite(&token, "short").await.unwrap_err();
+    assert!(matches!(
+        err,
+        AppError::Domain(DomainError::PasswordPolicy(_))
+    ));
+}
+
+#[tokio::test]
+async fn accept_invite_token_is_single_use() {
+    let w = World::new();
+    let owner = w.ctx_for(w.owner_id).await;
+    users(&w)
+        .invite(&owner, "aoife@madespace.co", "member", None)
+        .await
+        .unwrap();
+    let token = token_from_last_email(&w);
+    auth(&w)
+        .accept_invite(&token, "Sufficient1!")
+        .await
+        .unwrap();
+    // the same token can't be reused
+    let err = auth(&w)
+        .accept_invite(&token, "Another1!pw")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
+}
+
+#[tokio::test]
+async fn accept_invite_rejects_expired_token() {
+    let w = World::new();
+    let owner = w.ctx_for(w.owner_id).await;
+    let u = users(&w)
+        .invite(&owner, "late@madespace.co", "member", None)
+        .await
+        .unwrap();
+    // replace the stored token with an already-expired one
+    let now = w.clock.now();
+    {
+        let mut t = w.store.invite_tokens.lock().unwrap();
+        t.clear();
+        let id = InviteTokenId::new();
+        t.insert(
+            id,
+            InviteToken {
+                id,
+                user_id: u.id,
+                token_hash: w.tokens.hash_api_token("expired-token"),
+                created_at: now - time::Duration::days(8),
+                expires_at: now - time::Duration::days(1),
+            },
+        );
+    }
+    let err = auth(&w)
+        .accept_invite("expired-token", "Sufficient1!")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, AppError::Unauthorized));
 }
 
 // ── Permissions ───────────────────────────────────────────────

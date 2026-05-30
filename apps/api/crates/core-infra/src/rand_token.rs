@@ -41,6 +41,11 @@ impl TokenGenerator for RandTokenGenerator {
         let digest = Sha256::digest(full.as_bytes());
         hex(&digest)
     }
+
+    fn new_invite_token(&self) -> String {
+        // 32 bytes ≈ 256 bits — opaque, URL-safe (goes in an email link).
+        URL_SAFE_NO_PAD.encode(Self::random_bytes::<32>())
+    }
 }
 
 fn hex(bytes: &[u8]) -> String {
