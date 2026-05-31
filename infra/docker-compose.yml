@@ -1,7 +1,11 @@
+# Compose project name (network + volume prefix) follows the project slug,
+# written to .env by scripts/bootstrap.sh as COMPOSE_PROJECT_NAME.
+name: ${COMPOSE_PROJECT_NAME:-core}
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: core-postgres
+    container_name: ${COMPOSE_PROJECT_NAME:-core}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-core}
@@ -24,7 +28,7 @@ services:
   # instances (the conventional 1025/8025 may be in use); override via env.
   mailpit:
     image: axllent/mailpit:latest
-    container_name: core-mailpit
+    container_name: ${COMPOSE_PROJECT_NAME:-core}-mailpit
     restart: unless-stopped
     ports:
       - "${MAILPIT_SMTP_PORT:-1026}:1025" # SMTP
